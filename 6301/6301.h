@@ -39,14 +39,13 @@ inclusion of this file.
 #ifdef __cplusplus
 extern "C" {
 #endif
-
-#include <SSE.h>
-#include <parameters.h>
-#include <conditions.h>
+#include <stdint.h>
 #include <stdio.h>
 #include <sys/types.h>
 
-#if defined(SSE_HD6301_LL)
+typedef uint64_t COUNTER_VAR;
+typedef unsigned char BYTE;
+typedef unsigned short WORD;
 
 // variables that Steem must see
 extern COUNTER_VAR cycles_run; 
@@ -96,8 +95,6 @@ extern
 #endif
 int hd6301_copy_ram(unsigned char *ptr);
 #endif//dbg
-
-#endif //#if defined(SSE_HD6301_LL)
 
 #ifdef __cplusplus
 }                       // extern "C" {

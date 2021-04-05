@@ -24,30 +24,17 @@ struct TOptionBox, TOption, TConfig
 ---------------------------------------------------------------------------*/
 
 #pragma once
-#ifndef SSEOPTION_H
-#define SSEOPTION_H
-/*  options defines structures TOption (player choices) and TConfig 
-    (internal use).
-    This file is seen by 6301.c
-*/
-
-#include "SSE.h" 
-
-#ifdef RPI
-
-// RDH: Need to investigate what this does
-#define OPTION_BATTERY6301 0
+#ifndef RPIOPTION_H
+#define RPIOPTION_H
 
 typedef struct {
   BYTE Port0Joy;
 } RPIConfig;
 
 #if defined(__cplusplus)
-extern "C" RPIConfig SSEConfig;
+extern "C" RPIConfig IKBDConfig;
 #else
-extern RPIConfig SSEConfig;
+extern RPIConfig IKBDConfig;
 #endif
 
-#endif // RPI
-
-#endif//#ifndef SSEOPTION_H
+#endif//#ifndef RPIOPTION_H

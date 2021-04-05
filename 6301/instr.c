@@ -110,11 +110,7 @@ instr_print (addr)
   u_short addr;
 {
   u_short    pc = addr;
-#ifdef SSE_HD6301_LL
   u_char     op = pc<256?ram[pc]:mem_getb (pc);
-#else
-  u_char     op = mem_getb (pc);
-#endif
   struct opcode *opptr  = &opcodetab[op];
   char    *symname;
 

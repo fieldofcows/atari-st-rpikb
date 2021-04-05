@@ -12,9 +12,7 @@ THD6301::THD6301()
 
 THD6301::~THD6301()
 {
-#if defined(SSE_HD6301_LL)
     hd6301_destroy(); // calling the C 6301 function
-#endif
 }
 
 void THD6301::Init()
@@ -39,13 +37,7 @@ void THD6301::Init()
 void THD6301::ResetChip(int Cold)
 {
     TRACE_LOG("6301 Reset chip %d\n", Cold);
-#if defined(SSE_IKBDI)
-    CustomProgram = CUSTOM_PROGRAM_NONE;
-    ResetProgram();
-#endif
-#if defined(SSE_HD6301_LL)
     hd6301_reset(Cold);
-#endif
     if (Cold) // real cold
     {
         memset(ST_Key_Down, 0, sizeof(ST_Key_Down));
@@ -54,17 +46,9 @@ void THD6301::ResetChip(int Cold)
 
 void THD6301::Vbl()
 { // this is called in run.cpp right after IKBD_VBL()
-    hd6301_vbl_cycles = 0;
     click_x = click_y = 0;
 
     // RDH: MouseVblDeltaX and MouseVblDeltaY should be set to show the mouse
     // movement between each call to this function
-}
-
-void THD6301::ResetProgram() {
-    TRACE_LOG("6301 Reset ST program\n");
-    LastCommand = CurrentCommand = 0xFF;
-    CurrentParameter = 0;
-    nParameters = 0;
 }
 

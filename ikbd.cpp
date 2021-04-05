@@ -1,6 +1,6 @@
 #include "6301/6301.h"
-#include "acia.h"
 #include "ikbd.h"
+#include "options.h"
 #include <string.h>
 #include <iostream>
 #include <queue>
@@ -10,15 +10,11 @@
 
 #define TRACE_LOG printf
 
-TMC6850 acia[2];
 THD6301 Ikbd;
 BYTE ST_Key_Down[128];
 int mousek;
 BYTE stick[8];
-extern "C"
-{
-    RPIConfig SSEConfig;
-}
+extern "C" { RPIConfig IKBDConfig; }
 
 bool keyhit()
 {
@@ -35,14 +31,6 @@ bool keyhit()
     tcsetattr(0, TCSANOW, &term);
 
     return byteswaiting > 0;
-}
-
-void keyboard_buffer_write(BYTE src)
-{
-    /*  Function keyboard_buffer_write() receive bytes from the fake or the true
-    6301 emu, or from shortcuts or macros, and sets then in an agenda or sets up
-    an event to take care of the 6301->ACIA delay.
-*/
 }
 
 void handle_send_to_st() {

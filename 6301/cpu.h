@@ -16,11 +16,7 @@ struct cpu {
     unsigned min:16;
     unsigned max:16;
   } stack;
-#if defined(SSE_HD6301_LL)
   COUNTER_VAR ncycles; // can wrap
-#else
-  unsigned ncycles;
-#endif
   enum cpu_states state;
 
 #if 0

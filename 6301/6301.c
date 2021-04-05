@@ -18,7 +18,6 @@ along with this program.  If not, see https://www.gnu.org/licenses/.
 
 DOMAIN: Emu
 FILE: 6301.c
-CONDITION: SSE_HD6301_LL must be defined
 DESCRIPTION: Code to interface Steem SSE with a modified version of
 sim68xx (Copyright (c) 1994-1996 Arne Riiber) to emulate at a lower level
 the HD6301V1 chip that was in the ST, as described in 'HD6301V1 on ST.txt'.
@@ -33,18 +32,10 @@ I went out of my way to have TRACE working just like in the rest of Steem
 SSE.
 ---------------------------------------------------------------------------*/
 
-#ifdef UNIX
-#include <../pch.h>
-#endif
-
 #include "6301.h"
 
-#if defined(SSE_HD6301_LL)
-
-#include <debug.h>
 #include <ikbd.h>
 #include <options.h>
-#include <acia.h>
 
 #ifdef UNIX
 unsigned int _rotr(unsigned int Data, unsigned int Bits) {
@@ -185,8 +176,6 @@ hd6301_reset(int Cold) {
     mouse_y_counter=_rotl(mouse_y_counter,rnd);
     //TRACE("Mouse mask %X\n",mouse_x_counter); // 333... 666 999 CCC
     Ikbd.current_m68_cycle=0;
-    Ikbd.hd6301_vbl_cycles=0;
-    Ikbd.time_of_tdr_to_tdrs=0;
   }
   iram[TRCSR]=0x20;
   mem_putw (OCR, 0xFFFF);
@@ -198,10 +187,6 @@ hd6301_run_cycles(COUNTER_VAR to_m68_cycle) {
   COUNTER_VAR cycles_to_run=(to_m68_cycle-Ikbd.current_m68_cycle)/HD6301_CYCLE_DIVISOR;
   int pc;
   COUNTER_VAR starting_cycles=cpu.ncycles;
-#ifndef RPI
-  if(SSEConfig.CpuBoosted && cpu_cycles_multiplier!=0)
-    cycles_to_run=(COUNTER_VAR)((double)cycles_to_run/cpu_cycles_multiplier);
-#endif
   if(cycles_to_run<-256 || cycles_to_run>255)
   {
     Ikbd.current_m68_cycle=to_m68_cycle; //safety
@@ -213,9 +198,9 @@ hd6301_run_cycles(COUNTER_VAR to_m68_cycle) {
     TRACE("6301 starting cpu\n");
     cpu_start();
   }
-  if((iram[TRCSR]&1) && !acia[ACIA_IKBD].LineTxBusy)
+  if(iram[TRCSR]&1)
   {
-    TRACE("6301 waking up (PC %X cycles %d)\n",reg_getpc(),cpu.ncycles);
+    TRACE("6301 waking up (PC %X cycles %lu)\n",reg_getpc(),cpu.ncycles);
     iram[TRCSR]&=~1;
   }
   pc=reg_getpc();
@@ -231,13 +216,8 @@ hd6301_run_cycles(COUNTER_VAR to_m68_cycle) {
     instr_exec (); // execute one instruction
     cycles_run=cpu.ncycles-starting_cycles;
   }
-  Ikbd.hd6301_vbl_cycles+=cycles_run;
   Ikbd.ChipCycles=cpu.ncycles; // HD6301 object doesn't know cpu.ncycles
   cycles_run*=HD6301_CYCLE_DIVISOR;
-#ifndef RPI
-  if(SSEConfig.CpuBoosted)
-    cycles_run=(COUNTER_VAR)((double)cycles_run*cpu_cycles_multiplier);
-#endif
   Ikbd.current_m68_cycle+=cycles_run;
   cycles_run=0;
   return (int)cycles_run; //unused
@@ -431,4 +411,3 @@ BYTE hd6301_read_tx_byte() {
     return result;
 }
 
-#endif//#if defined(SSE_HD6301_LL)

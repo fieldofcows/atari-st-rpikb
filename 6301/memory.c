@@ -115,11 +115,7 @@ mem_print_ascii (startaddr, nbytes)
 
   for (i = 0, addr = startaddr; i < nbytes; i++, addr++)
     if (mem_inramrom (addr))
-#ifdef SSE_HD6301_LL
       if (isprint(value = ((addr<NIREGS)?iram[addr]:ram[addr]) ))
-#else
-      if (isprint(value = mem_getb (addr)))
-#endif
         putchar (value);
       else
         putchar ('.');
@@ -142,16 +138,12 @@ mem_print (startaddr, nbytes, nperline)
       if (i >= nbytes)
         printf ("   ");
       else if(mem_inramrom(addr))
-#ifdef SSE_HD6301_LL
       {
         if(addr<NIREGS)
           printf ("%02x ", iram[addr]);
         else
           printf ("%02x ", ram[addr]);
       }
-#else
-        printf ("%02x ", mem_getb (addr));
-#endif
       else
         printf ("-- ");
     putchar (' ');

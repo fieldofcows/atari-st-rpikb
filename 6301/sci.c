@@ -28,12 +28,6 @@ $0013    | B | TDR   | Transmit Data Register                         | W0
 /*
  * Pseudo-received data buffer used by rdr_getb() routines
  */
-#if !defined(SSE_HD6301_LL)
-static u_char recvbuf[BUFSIZE];
-static int  rxindex      = 0; /* Index of first byte in recvbuf */
-       int  rxinterrupts = 0; /* Number of outstanding rx interrupts */
-       int  txinterrupts = 0; /* Number of outstanding tx interrupts */
-#endif
 /*
  * sci_in - input to SCI
  *
@@ -44,60 +38,32 @@ static int  rxindex      = 0; /* Index of first byte in recvbuf */
     to have been received in rdrs.
 */
 
-sci_in (s, nbytes)
-  u_char *s;
+sci_in(s, nbytes)
+    u_char *s;
 int nbytes;
 {
-#if defined(SSE_HD6301_LL)
-
-#if  defined(SSE_DEBUG)
-  u_char trcsr=iram[TRCSR];
-//  ASSERT(nbytes==1);
-//  ASSERT(trcsr&RE);
-  if(trcsr&WU) // bug?
+#if defined(SSE_DEBUG)
+  u_char trcsr = iram[TRCSR];
+  //  ASSERT(nbytes==1);
+  //  ASSERT(trcsr&RE);
+  if (trcsr & WU) // bug?
     TRACE("6301 in standby mode\n");
 #endif
   // detect OVR condition, set flag at once (unlike ACIA)
-  if(iram[TRCSR]&RDRF)
+  if (iram[TRCSR] & RDRF)
   {
-    TRACE("6301 OVR RDR %X RDRS %X SR %X->%X\n",Ikbd.rdr,Ikbd.rdrs,iram[TRCSR],iram[TRCSR]|ORFE);
-    iram[TRCSR]|=ORFE; // hardware sets overrun bit
+    TRACE("6301 OVR RDR %X RDRS %X SR %X->%X\n", Ikbd.rdr, Ikbd.rdrs, iram[TRCSR], iram[TRCSR] | ORFE);
+    iram[TRCSR] |= ORFE; // hardware sets overrun bit
   }
   else
   {
-    Ikbd.rdr=*s;
-#if defined(SSE_IKBD_RTC) && defined(SSE_IKBDI) // It is of course a dangerous hack
-    if(OPTION_BATTERY6301==2)
-    {
-      if(Ikbd.CurrentCommand==0x1B && Ikbd.CurrentParameter==1) // TIME-OF-DAY CLOCK SET
-        Ikbd.rdr-=0xA0;
-    }
-#endif
-    ireg_putb (RDR, Ikbd.rdr);
-    TRACE("6301 RDR %X\n",Ikbd.rdr);
+    Ikbd.rdr = *s;
+    ireg_putb(RDR, Ikbd.rdr);
+    TRACE("6301 RDR %X\n", Ikbd.rdr);
   }
-  iram[TRCSR]|=RDRF; // set RDRF
+  iram[TRCSR] |= RDRF; // set RDRF
 
-#else
-
-  int i;
-  for (i=0; i<nbytes; i++)
-    if (rxinterrupts < BUFSIZE)
-      recvbuf[rxinterrupts++] = s[i];
-    else
-      warning ("sci_in:: buffer full\n");
-  rec_byte=*s;
-
-#endif
 }
-
-#if !defined(SSE_HD6301_LL) 
-sci_print ()
-{
-  printf ("sci recvbuf:\n");
-  fprinthex (stdout, recvbuf + rxindex, rxinterrupts);
-}
-#endif
 
 /*
 TRCSR
@@ -126,33 +92,17 @@ reads or writes the status/control register $11 (often).
 
 */
 
-
-
 /*
  * trcsr_getb - always return Transmit Data Reg. Empty = 1
  */
 
-u_char trcsr_getb (offs)
-  u_int offs;
+u_char trcsr_getb(offs)
+    u_int offs;
 {
-#ifndef SSE_HD6301_LL
-  char c;
-#endif
   unsigned char rv;
-#ifndef SSE_HD6301_LL
-  /*
-   * Check if user has typed a key, prevent simulator overrun
-   * if data in recvbuf, return RDRF
-   */
-  if (!rxinterrupts && (c = tty_getkey (0))) /* Typed a key */
-    sci_in (&c, 1);
-#endif
-
-  rv=ireg_getb (TRCSR);
-
+  rv = ireg_getb(TRCSR);
   return rv;
 }
-
 
 /*
  *  trcsr_putb - enable/disable tx/rx interrupt
@@ -160,37 +110,19 @@ u_char trcsr_getb (offs)
  *  Sets global interrupt flag if tx interrupt is enabled
  *  so main loop can execute interrupt vector
  */
-trcsr_putb (offs, value)
-  u_int  offs;
-  u_char value;
+trcsr_putb(offs, value)
+    u_int offs;
+u_char value;
 {
 
-#ifdef SSE_HD6301_LL 
-
-//  ASSERT(value&RE); // Receive is never disabled by program
-  if(value&1)
+  //  ASSERT(value&RE); // Receive is never disabled by program
+  if (value & 1)
     TRACE("Set 6301 stand-by\n");
-  
+
   // bits 5-7 of TRCSR can't be set by software
-  value&=0x1F;  
-  value|=(iram[0x11]&0xE0); // add RO bits 5-7
-  ireg_putb (TRCSR, value);
-
-#else
-
-  u_char trcsr; //ST
-  trcsr = trcsr_getb (TRCSR);
-  /*
-   * trcsr & TDRE is always non-zero, thus we can
-   * start generating tx int. request immediately
-   */
-  if (trcsr & TIE)
-    txinterrupts = 1;
-  else
-    txinterrupts = 0;
-
-#endif
-
+  value &= 0x1F;
+  value |= (iram[0x11] & 0xE0); // add RO bits 5-7
+  ireg_putb(TRCSR, value);
 }
 
 /*
@@ -200,44 +132,29 @@ trcsr_putb (offs, value)
  * decrement number of outstanding rx interrupts
  * Assume RIE is enabled.
  */
-u_char rdr_getb (offs)
-  u_int  offs;
+u_char rdr_getb(offs)
+    u_int offs;
 {
-  if (cpu_isrunning ()) {
+  if (cpu_isrunning())
+  {
     /*
      * If recvbuf is not empty, eat a byte from it
      * into RDR
      */
-#if defined(SSE_HD6301_LL)
 
-    if(iram[TRCSR]&RDRF) 
+    if (iram[TRCSR] & RDRF)
     {
-      TRACE("6301 (PC %X) reads RDR %X\n",reg_getpc(),Ikbd.rdr);
-      iram[TRCSR]&=~RDRF;
+      TRACE("6301 (PC %X) reads RDR %X\n", reg_getpc(), Ikbd.rdr);
+      iram[TRCSR] &= ~RDRF;
     }
-    if(iram[TRCSR]&ORFE) 
+    if (iram[TRCSR] & ORFE)
     {
       TRACE("6301 clear OVR\n");
-      iram[TRCSR]&=~ORFE; // clear overrun bit - we don't check if read TRCSR first
+      iram[TRCSR] &= ~ORFE; // clear overrun bit - we don't check if read TRCSR first
     }
 
-#else
-
-    if (rxinterrupts) {
-      rec_byte=recvbuf[rxindex];
-      ireg_putb (RDR, recvbuf[rxindex++]);
-      rxinterrupts--;
-    }
-    /*
-     * If the cpu has read all bytes in recvbuf[]
-     * make recvbuf[] ready for more user sci data input
-     */
-    if (rxinterrupts == 0)
-      rxindex = 0;
-
-#endif
   }
-  return ireg_getb (RDR);
+  return ireg_getb(RDR);
 }
 
 /*
@@ -247,57 +164,28 @@ u_char rdr_getb (offs)
  * to signalize main loop to execute sci interrupt vector
  */
 
-tdr_putb (offs, value)
-  u_int  offs;
-  u_char value;
-{ 
+tdr_putb(offs, value)
+    u_int offs;
+u_char value;
+{
   u_char trcsr;
 
-  ireg_putb (TDR, value);
-#if !defined(SSE_HD6301_LL) // this would pollute our trace (wondered what it was)
-  io_putb (value); 
-#endif
+  ireg_putb(TDR, value);
   /*
    * trcsr & TDRE is always non-zero, thus we can
    * start generating tx int. request immediately
    */
 
-  trcsr = trcsr_getb (TRCSR);
+  trcsr = trcsr_getb(TRCSR);
 
-#if defined(SSE_HD6301_LL)
-/*  Double buffer allows 1 byte waiting in TDR while another is being
+  /*  Double buffer allows 1 byte waiting in TDR while another is being
     shifted, but not more. 
     TDRE = 0 while a byte is waiting in TDR.
 */
 
-#if defined(SSE_IKBD_RTC) && defined(SSE_IKBDI)
-  // 1C INTERROGATE TIME-OF-DAT CLOCK
-  if(Ikbd.LastCommand==0x1C && regs.accd.a==1 && Ikbd.tdrs==0xfc) 
-  {
-    if(OPTION_BATTERY6301==2) // dangerous hack
-    {
-      value += 0xA0;
-      Ikbd.LastCommand = -1;
-    }
-  }
-#endif
-  Ikbd.tdr=value;
-  TRACE("6301 TDR %X\n",Ikbd.tdr);
-  iram[TRCSR]&=~TDRE;
+  Ikbd.tdr = value;
+  TRACE("6301 TDR %X\n", Ikbd.tdr);
+  iram[TRCSR] &= ~TDRE;
   // starting a transmission
-  if(!acia[ACIA_IKBD].LineRxBusy)
-  {
-    // Implement a one bit delay before TDR->TDRS like in the ACIA.
-    int cycles_for_one_bit=128; // normally depends on RMCR, we use the ST value
-    Ikbd.time_of_tdr_to_tdrs=cpu.ncycles+cycles_for_one_bit;
-    acia[ACIA_IKBD].LineRxBusy=2;
-  }
-
-#else
-
-  if (trcsr & TIE)
-    txinterrupts = 1;
-
-#endif
 
 }

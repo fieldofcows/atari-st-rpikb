@@ -27,10 +27,8 @@ u_char tcsr_getb (offs)
   if ((tcsr = ireg_getb (TCSR)) & OCF)
     tcsr_is_read = 1;
 
-#if defined(SSE_HD6301_LL)
   // clear TOF but we don't check if SR was read 
   ireg_putb (TCSR, ireg_getb (TCSR) & (~TOF)); 
-#endif
 
   return tcsr;
 }
@@ -74,11 +72,7 @@ timer_inc (ncycles)
   u_int ncycles;
 {
   u_int  frc_old;     /* Free Running Counter */
-#if defined(SSE_HD6301_LL)
   u_short frc_new; // 16 bit, must overflow
-#else
-  u_long frc_new;     /* 32 bits */
-#endif
   u_int  ocr;     /* Output Compare Register */
 
   /*
@@ -92,16 +86,12 @@ timer_inc (ncycles)
    */
   ocr = ireg_getw (OCR);
 
-#if defined(SSE_HD6301_LL)
   // detect overflow (AFAIK nothing uses it)
   if(frc_old>frc_new)
     ireg_putb (TCSR, ireg_getb (TCSR) | TOF);
 
   //  detect output compare 
   if(frc_new>=ocr && (frc_old<ocr || frc_old>frc_new)) {
-#else
-  if (frc_new >= ocr) {
-#endif
     ireg_putb (TCSR, ireg_getb (TCSR) | OCF);
     tcsr_is_read = 0;
   }

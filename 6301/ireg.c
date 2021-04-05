@@ -357,7 +357,7 @@ static u_char dr4_getb (offs)
       //TRACE("sticks %X 0 %x 1 %X\n",value,stick[0],stick[1]);
     }
   }  
-  if(!SSEConfig.Port0Joy)
+  if (!IKBDConfig.Port0Joy)
     value=(value&(~0xF))|(mouse_x_counter&3)|((mouse_y_counter&3)<<2);
   //iram[offs]=value; //no! Froggies menu would take / and enter as well as 0
   return value;
