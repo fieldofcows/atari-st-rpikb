@@ -43,7 +43,7 @@ extern "C" {
 #include <stdio.h>
 #include <sys/types.h>
 
-typedef uint64_t COUNTER_VAR;
+typedef int64_t COUNTER_VAR;
 typedef unsigned char BYTE;
 typedef unsigned short WORD;
 
