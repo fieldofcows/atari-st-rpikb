@@ -36,6 +36,10 @@ inclusion of this file.
 #ifndef HD6301_H
 #define HD6301_H
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 #include <SSE.h>
 #include <parameters.h>
 #include <conditions.h>
@@ -94,5 +98,9 @@ int hd6301_copy_ram(unsigned char *ptr);
 #endif//dbg
 
 #endif //#if defined(SSE_HD6301_LL)
+
+#ifdef __cplusplus
+}                       // extern "C" {
+#endif
 
 #endif // HD6301_H

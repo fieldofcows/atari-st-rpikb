@@ -6,6 +6,7 @@ find_package(Curses REQUIRED)
 
 add_executable(rpi6301
     ikbd.cpp
+    THD6301.cpp
     6301/6301.c
 )
 target_include_directories(

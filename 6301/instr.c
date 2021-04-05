@@ -14,6 +14,7 @@
 #include "reg.h"
 #include "sci.h"
 #include "timer.h"
+#include "THD6301.h"
 
 #ifdef USE_PROTOTYPES
 #include "instr.h"
@@ -48,28 +49,6 @@ instr_exec ()
   int interrupted = 0;    /* 1 = HW interrupt occured */
 
 #ifndef M6800
-
-#ifndef RPI
-#if defined(SSE_HD6301_LL)
-
-  // byte has just been received by ACIA?
-  if(!acia[ACIA_IKBD].LineRxBusy && !(iram[TRCSR]&TDRE))
-    acia[ACIA_IKBD].LineRxBusy=3; // indicates it's time to send byte in TDR
-  // first byte of a series to be sent?
-  else if(acia[ACIA_IKBD].LineRxBusy==2 && cpu.ncycles-Ikbd.time_of_tdr_to_tdrs>=0)
-    acia[ACIA_IKBD].LineRxBusy=3; // indicates it's time to send byte in TDR
-
-  // send byte to ACIA now?
-  if(acia[ACIA_IKBD].LineRxBusy==3)
-  {
-    Ikbd.tdrs=Ikbd.tdr; // move TDR to TDRS
-    iram[TRCSR]|=TDRE; // set TDRE
-    TRACE("6301 TDR->TDRS %X\n",Ikbd.tdrs);
-    keyboard_buffer_write(Ikbd.tdrs); // call Steem's ikbd function
-    //ASSERT(acia[ACIA_IKBD].LineRxBusy==1);
-  }
-#endif
-#endif
 
   if (!reg_getiflag ()) 
   {
