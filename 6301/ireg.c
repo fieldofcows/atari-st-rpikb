@@ -324,7 +324,7 @@ static u_char dr4_getb (offs)
           mouse_x_counter=_rotr(mouse_x_counter,1);
         Ikbd.click_x++;
         Ikbd.MouseNextTickX+=Ikbd.MouseCyclesPerTickX;
-        //TRACE("mouse tick x %d on %d, next on %d\n",Ikbd.click_x,cpu.ncycles,Ikbd.MouseNextTickX);
+        //printf("mouse tick x %d on %d, next on %d\n",Ikbd.click_x,cpu.ncycles,Ikbd.MouseNextTickX);
       }
     }
     if(Ikbd.MouseVblDeltaY)
@@ -338,7 +338,7 @@ static u_char dr4_getb (offs)
           mouse_y_counter=_rotr(mouse_y_counter,1);
         Ikbd.click_y++;
         Ikbd.MouseNextTickY+=Ikbd.MouseCyclesPerTickY;
-        //TRACE("mouse tick y %d on %d, next on %d\n",Ikbd.click_y,cpu.ncycles,Ikbd.MouseNextTickY);
+        //printf("mouse tick y %d on %d, next on %d\n",Ikbd.click_y,cpu.ncycles,Ikbd.MouseNextTickY);
       }
     }
   }

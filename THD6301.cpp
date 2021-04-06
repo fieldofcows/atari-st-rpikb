@@ -23,7 +23,7 @@ void THD6301::Init()
         return;
     const int romlen = 4096;
     int rombase = 256; // miniram
-    FILE *fp = fopen("/mnt/c/src/st_emulator/rpi6301/rom/HD6301V1ST.img", "r+b");
+    FILE *fp = fopen("HD6301V1ST.img", "r+b");
     if (!fp)
     {
         std::cerr << "Could not open ROM file" << std::endl;

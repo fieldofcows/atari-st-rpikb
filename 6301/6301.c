@@ -182,6 +182,30 @@ hd6301_reset(int Cold) {
 }
 
  
+void hd6301_run_clocks(COUNTER_VAR clocks) {
+  // Called by Steem to run some cycles (per scanline or to update before IO)
+  int pc;
+  COUNTER_VAR starting_cycles=cpu.ncycles;
+
+  // make sure our 6301 is running OK
+  if(!cpu_isrunning())
+  {
+    TRACE("6301 starting cpu\n");
+    cpu_start();
+  }
+  if(iram[TRCSR]&1)
+  {
+    TRACE("6301 waking up (PC %X cycles %lu)\n",reg_getpc(),cpu.ncycles);
+    iram[TRCSR]&=~1;
+  }
+  pc=reg_getpc();
+
+  while(!Ikbd.Crashed && ((cpu.ncycles-starting_cycles) < clocks))
+  {
+    instr_exec (); // execute one instruction
+  }
+}
+
 hd6301_run_cycles(COUNTER_VAR to_m68_cycle) {
   // Called by Steem to run some cycles (per scanline or to update before IO)
   COUNTER_VAR cycles_to_run=(to_m68_cycle-Ikbd.current_m68_cycle)/HD6301_CYCLE_DIVISOR;
