@@ -19,9 +19,5 @@ cpu_reset ()
   /*
    * The following suits many CPU's but could also test CPU type
    */
-#if !defined(SSE_IKBD_6301_DISABLE_CALLSTACK)
   cpu_setstackmax (cpu_getstackmax () ? cpu_getstackmax () : 0x00FF);
-#else
-  cpu_setstackmax (0x00FF);
-#endif
 }

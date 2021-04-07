@@ -33,12 +33,10 @@
 u_int ram_start;    /* 0x0000; */
 u_int ram_end;    /* 0xFFFF; */
 u_char  *ram=0;     /* was [65536]; modified for MSDOS compilers */
-#if !defined(SSE_IKBD_6301_DISABLE_BREAKS)
 u_char *breaks;     /* Physical storage for breakpoints */
 int    break_flag;    /* Non-zero if an address containing a
            breakpoint has been accessed by mem_xxx */
 u_int  break_addr;    /* Last breakpoint address accessed */
-#endif
 
 /*
  * mem_init - initialize memory area
@@ -46,11 +44,7 @@ u_int  break_addr;    /* Last breakpoint address accessed */
 u_char *
 mem_init ()
 {
-#if defined(SSE_IKBD_6301_MINIRAM)
   u_int size = (256+4096);
-#else
-  u_int size = MEMSIZE; /* MEMSIZE also hard coded in command.c */
-#endif
   if (ram == NULL) {
     if ((ram = malloc (size)) == NULL) {
       perror ("Couldn't allocate ram");
@@ -59,16 +53,11 @@ mem_init ()
     //printf("6301: ram %d allocated OK\n",size); //SS
     TRACE("6301: ram %d allocated OK\n",size); //SS
     ram_start = 0;
-#if defined(SSE_IKBD_6301_MINIRAM)
     ram_end   = MEMSIZE - 1;
-#else
-    ram_end   = size - 1;
-#endif
     memset (ram, 0, 256);
   } else {
     printf ("ram already allocated\n");
   }
-#if !defined(SSE_IKBD_6301_DISABLE_BREAKS)
   /*
    * This is done here since ram and breaks are sisters
    */
@@ -86,7 +75,6 @@ mem_init ()
   } else {
     printf ("breaks already allocated\n");
   }
-#endif
   return ram;
 }
  

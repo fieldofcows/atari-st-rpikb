@@ -28,9 +28,6 @@ reset ()
 {
   reg_setpc (mem_getw (RESVECTOR));
   reg_setiflag (1);
-#if defined(SSE_IKBD_6301_DISASSEMBLE_ROM) // disassemble ST's 6301 rom
-  dump_rom();
-#endif
 }
 
 
@@ -102,64 +99,3 @@ instr_exec ()
   return 0;
 }
 
-#ifdef SSE_DEBUG
-/*
- * instr_print - print (unassemble) an instruction
- */
-instr_print (addr)
-  u_short addr;
-{
-  u_short    pc = addr;
-  u_char     op = pc<256?ram[pc]:mem_getb (pc);
-  struct opcode *opptr  = &opcodetab[op];
-  char    *symname;
-
-  /*
-   * In case somebody changes the opcodemap, verify it
-   */
-
-  ASSERT (opptr->op_value == op);
-
-  if(pc==mem_getw(0xFFF0)) // SS
-    TRACE("\nSCI interrupt start\n");
-
-  if(pc==mem_getw(0xFFF4)) // SS
-    TRACE("\nOCF interrupt start\n");
-
-  printf ("%04x\t", pc);
-
-  if (opptr->op_n_operands == 0)
-  {
-    printf ("%02x\t\t",  mem_getb (pc));
-    printf (opptr->op_mnemonic, mem_getb (pc + 1));
-  }
-  else if (opptr->op_n_operands == 1)
-  {
-    printf ("%02x %02x\t\t",  mem_getb (pc), mem_getb (pc+1));
-    printf (opptr->op_mnemonic, mem_getb (pc + 1));
-    if (symname = sym_find_name (mem_getb (pc + 1)))
-      printf ("\t%s", symname);
-    // SS: branches, compute handy absolute addresses
-    if(opptr->op_value>=0x20 && opptr->op_value<=0x2F
-      ||opptr->op_value==0x8d)
-    {
-      int disp=mem_getb (pc + 1);
-      if(disp&0x80) // negative displacement
-        disp=-(0xFF-disp+1);
-      TRACE(" (%X)", pc+2+disp);
-    }
-  }
-  else
-  {
-    printf ("%02x %02x %02x\t", mem_getb (pc),
-      mem_getb (pc + 1), mem_getb (pc + 2));
-    printf (opptr->op_mnemonic, mem_getw (pc + 1));
-    if (symname = sym_find_name (mem_getw (pc + 1)))
-      printf ("\t%s", symname);
-  }
-  putchar('\n');
-  if(opptr->op_value==0x39 || opptr->op_value==0x3b)
-    putchar('\n');
-  return opptr->op_n_operands + 1;
-}
-#endif

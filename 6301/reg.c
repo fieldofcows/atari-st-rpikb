@@ -10,16 +10,13 @@
 #include "reg.h"
 
 #ifdef USE_PROTOTYPES
-#if !defined(SSE_IKBD_6301_DISABLE_CALLSTACK)
 #include "callstac.h"
-#endif
 #endif
 
 struct regs regs;
 
 reg_setsp (value) u_int value;
 {
-#if !defined(SSE_IKBD_6301_DISABLE_CALLSTACK)
   if (value > regs.sp)
   {
     /*
@@ -35,7 +32,6 @@ reg_setsp (value) u_int value;
     warning ("sp:%04x, min:%04x\n", regs.sp, cpu_getstackmin());
   else if (value > cpu_getstackmax())
     warning ("sp:%04x, max:%04x\n", regs.sp, cpu_getstackmax());
-#endif
   return regs.sp = value;
 }
 

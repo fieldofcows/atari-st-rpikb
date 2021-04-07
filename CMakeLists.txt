@@ -13,6 +13,6 @@ target_include_directories(
     6301
     headers
 )
-add_definitions(-DUNIX -DRPI)
+add_definitions(-DUNIX -DRPI -DTRACE_6301)
 set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wno-implicit-int")
 target_link_libraries(rpi6301 rt pthread)

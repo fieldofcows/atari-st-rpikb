@@ -42,13 +42,6 @@ sci_in(s, nbytes)
     u_char *s;
 int nbytes;
 {
-#if defined(SSE_DEBUG)
-  u_char trcsr = iram[TRCSR];
-  //  ASSERT(nbytes==1);
-  //  ASSERT(trcsr&RE);
-  if (trcsr & WU) // bug?
-    TRACE("6301 in standby mode\n");
-#endif
   // detect OVR condition, set flag at once (unlike ACIA)
   if (iram[TRCSR] & RDRF)
   {

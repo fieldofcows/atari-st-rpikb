@@ -57,26 +57,6 @@ static u_char dr4_getb P_((u_int offs));
     It's slow but performance isn't needed for the keyboard.
 */
 
-#if !defined(SSE_IKBD_6301_ROM_KEYTABLE) || defined(SSE_DEBUG)
-int dr_table[8][15] = {
-  //               DR3                |                  DR4                  |
-  //  1 |  2 |  3 |  4 |  5 |  6 |  7 |  0 |  1 |  2 |  3 |  4 |  5 |  6 |  7 |
-  //  FD   FB   F7   EF   DF   BF   7F   FE   FD   FB   F7   EF   DF   BF   7F
-  // 002  004  008  010  020  040  080  001  002  004  008  010  020  040  080
-  //  0    1    2    3    4    5    6    7    8    9   10   11   12   13   14
-  ///////////////////////////////////////////////////////////////////////////// DR1
-  {0x00,0x3B,0x3C,0x3D,0x3E,0x3F,0x40,0x41,0x42,0x43,0x44,0x62,0x61,0x63,0x65},// 0
-  {0x00,0x00,0x00,0x00,0x01,0x03,0x05,0x07,0x09,0x0B,0x0D,0x0E,0x48,0x64,0x66},// 1
-  {0x00,0x00,0x00,0x00,0x02,0x04,0x06,0x08,0x0A,0x0C,0x29,0x53,0x47,0x67,0x69},// 2
-  {0x00,0x00,0x00,0x00,0x0F,0x11,0x13,0x15,0x16,0x18,0x1A,0x52,0x4B,0x68,0x4A},// 3
-  {0x1D,0x00,0x00,0x00,0x10,0x12,0x14,0x22,0x17,0x19,0x1B,0x2B,0x50,0x6A,0x6C},// 4
-  {0x00,0x2A,0x00,0x00,0x1E,0x1F,0x21,0x23,0x24,0x26,0x27,0x1C,0x4D,0x6B,0x4E},// 5
-  {0x00,0x00,0x38,0x00,0x60,0x20,0x2E,0x30,0x25,0x33,0x34,0x28,0x6D,0x6E,0x6F},// 6
-  {0x00,0x00,0x00,0x36,0x2C,0x2D,0x2F,0x31,0x32,0x39,0x3A,0x35,0x70,0x71,0x72} // 7
-  };
-#endif
-
-#if defined(SSE_IKBD_6301_ROM_KEYTABLE)
 /*  go fetch the value in 6301 rom instead of in a fat table!
     it works, it's fun, but it probably is less efficient than the table,
     and it depends on a precise rom (undef)
@@ -99,7 +79,6 @@ BYTE get_scancode(int dr1bit,int column) {
 //  ASSERT(column<15);
 //  ASSERT(mem_getb(0xF319)==0x3E);
 //  ASSERT(mem_getb(0xF206)==0x1D);
-#if defined(SSE_IKBD_6301_MINIRAM)
   if(column<4)
   {
     if(!dr1bit)
@@ -109,24 +88,8 @@ BYTE get_scancode(int dr1bit,int column) {
   }
   else
     val=mem_getb(0xF319+dr1bit+((column-4)*8));
-#else
-  if(column<4)
-  {
-    if(!dr1bit)
-      val=ram[0xF312+column];
-    else if(dr1bit-4==column)
-      val=ram[0xF206+column];
-  }
-  else
-    val=ram[0xF319+dr1bit+((column-4)*8)];
-#endif
-#if defined(SSE_DEBUG)
-//  ASSERT(val==dr_table[dr1bit][column]);
-#endif
   return val;
 }
-#endif
-
 
 /*
 SCAN CODES
@@ -185,11 +148,7 @@ u_int offs;
       for(column=0;column<7&&!found;column++)
       {
         mask2=1<<(column+1);
-#if defined(SSE_IKBD_6301_ROM_KEYTABLE)
         scancode=get_scancode(dr1bit,column);
-#else
-        scancode=dr_table[dr1bit][column];
-#endif
         if(ST_Key_Down[scancode]
           &&  (dr3&mask2) // must be set (diode on)
           &&  (ddr3&mask2)
@@ -200,11 +159,7 @@ u_int offs;
       for(column=7;column<15&&!found;column++)
       {
         mask2=1<<(column-7);
-#if defined(SSE_IKBD_6301_ROM_KEYTABLE)
         scancode=get_scancode(dr1bit,column);
-#else
-        scancode=dr_table[dr1bit][column];
-#endif
         if(ST_Key_Down[scancode]
           &&  (dr4&mask2) // must be set (diode on)
           &&  (ddr4&mask2)

@@ -49,12 +49,6 @@ unsigned int _rotl(unsigned int Data, unsigned int Bits) {
 
 #endif
 
-#ifdef VC_BUILD
-#pragma warning (disable : 4013 4100 4127 4131 4431 4245 4706 4710 4716)
-#pragma warning (disable : 28278)
-#endif
-
-
 // variables from Steem (declared as extern "C") there
 extern unsigned char  stick[8]; // joysticks
 extern double cpu_cycles_multiplier;
@@ -65,65 +59,23 @@ extern int mousek;
 COUNTER_VAR cycles_run=0; 
 
 // additional variables for our module
-unsigned char rec_byte;
 unsigned int mouse_x_counter;
 unsigned int mouse_y_counter;
 
 // Debug facilities
-// ASSERT
-#undef ASSERT
-#if defined(_MSC_VER) && defined(_DEBUG)
-#if defined(SSE_X64_DEBUG)
-#define ASSERT(x) {if(!(x)) {TRACE("Assert failed: %s\n",#x);\
-                  DebugBreak();}}
-#else
-#define ASSERT(x) {if(!(x)) {TRACE("Assert failed: %s\n",#x);\
-                   _asm{int 0x03}}}
-#endif
-#else 
-#if !defined(NDEBUG) ||(defined(VC_BUILD) && defined(DEBUG_BUILD))
-#define ASSERT(x) {if(!(x)) TRACE("Assert failed: %s\n",#x);} //just a trace
-#else
-#define ASSERT(x) // release
-#endif
-#endif
-// TRACE
-#undef TRACE
-#if defined(SSE_DEBUG) 
-// we use this trick because Trace is a struct function
-// it goes to Trace.txt or the IDE
-// TRACE here is the equivalent of TRACE_LOG in Steem SSE
-void (*hd6301_trace)(char *fmt,...);
-#undef LOGSECTION
-#define TRACE Debug.LogSection=LOGSECTION_IKBD,hd6301_trace
-#elif defined(VC_BUILD) || defined(SSE_UNIX)
+#if defined(TRACE_6301)
 #define TRACE printf
 #else
-#define TRACE printf
+#define TRACE
 #endif
 
-//#define SSE_IKBD_6301_ROM_KEYTABLE //array vs. code...
-// don't undef, Steem counts on that, it just marks the mods:
-#define SSE_IKBD_6301_DISABLE_BREAKS // to save 64k RAM (we still consume 64k)
-#define SSE_IKBD_6301_DISABLE_CALLSTACK // to save 3k on the PC stack
-#define SSE_IKBD_6301_MINIRAM // save close to 60k, at last
-
-// constructing our module (OBJ) the good old Steem way, hem
-
-#ifdef MINGW_BUILD
-#pragma GCC diagnostic ignored "-Wreturn-type"
-#define __max(a,b) ((a)>(b) ? (a):(b))
-#define __min(a,b) ((a)>(b) ? (b):(a))
-#endif
+#define ASSERT(x)
+#define error printf
+#define warning TRACE
 
 #define abs_quick(i) ( (i>=0) ? (i) : -(i))
 
-#define error printf // saves headache
-#define warning TRACE //printf 
 // base
-#if !defined(SSE_IKBD_6301_DISABLE_CALLSTACK)
-#include "callstac.c"
-#endif
 #include "cpu.c"
 #include "fprinthe.c"
 #include "memsetl.c"
@@ -140,6 +92,7 @@ void (*hd6301_trace)(char *fmt,...);
 #include "optab.c"
 #include "sci.c"
 #include "timer.c"
+#include "callstac.c"
 
 // Interface with Steem
 
@@ -153,11 +106,6 @@ hd6301_destroy() {
   if(ram) 
     free(ram);
   ram=NULL;
-#if !defined(SSE_IKBD_6301_DISABLE_BREAKS)
-  if(breaks) 
-    free(breaks);
-  breaks=NULL;
-#endif
 }
 
 
@@ -273,14 +221,6 @@ hd6301_load_save(int one_if_save,unsigned char *buffer) {
   else
     memmove(&cpu,i,sizeof(cpu));
   i+=sizeof(cpu);
-#if !defined(SSE_IKBD_6301_DISABLE_CALLSTACK)
-  // callstack - it's a debug feature, useless for us, lots of space
-  if(one_if_save)
-    memmove(i,&callstack,sizeof(callstack));
-  else
-    memmove(&callstack,i,sizeof(callstack));
-  i+=sizeof(callstack);
-#endif
   // ram
   if(one_if_save)
   {
@@ -339,88 +279,6 @@ void hd6301_poke(int addr, BYTE value) {
   if(addr>=0 && addr<=255)
     ram[addr] = value;
 }
-
-
-// Debug
-
-#if defined(SSE_IKBD_6301_DISASSEMBLE_ROM)
-
-dump_rom() {
-  int i;
-  TRACE("************************************************************\n");
-  TRACE("* This disassembly of the Atari ST's HD6301V1 ROM was made *\n");
-  TRACE("* by Sim6xxx as modified for Steem SSE                     *\n");
-  TRACE("************************************************************\n\n\n");
-  for(i=0xF000;i<0xFFFF;i++)
-  {
-    // don't decode data, + indication
-    // data bytes
-    if(i==0xFF6e || i==0xffed)
-      mem_print (i, 1, 1);
-    else if(i>=0xFF6F)
-    {
-      mem_print (i, 2, 2);
-      i++;
-    } 
-    // data groups
-    else if(i==0xf2f3)
-    {
-      TRACE("eg Scancodes are here below\n");
-      mem_print (i, 0xF370-0xf2f3+1,14); 
-      i+=0xF370-0xf2f3;
-    }
-    else if(i==0xf679)//arrows +...
-    {
-      mem_print (i, 7,2); 
-      i+=7;
-    }
-    else if(i==0xf87a)//arrows
-    {
-      mem_print (i, 4,2); 
-      i+=4-1;
-    }
-    else if(i==0xf930)
-    {
-      mem_print (i, 0xf990-0xf930,2); 
-      i+=0xf990-0xf930-1;
-    }
-    else if(i==0xfed0)
-    {
-      mem_print (i, 0xfee1-0xfed0, 0xfee1-0xfed0); 
-      i+=0xfee1-0xfed0;
-    }
-    // instructions
-    else
-      i+=instr_print (i)-1;
-  }//nxt
-}
-
-#endif
-
-#if defined(SSE_DEBUGGER)
-
-hd6301_dump_ram() { // commanded by Debugger
-  int i;
-  printf("6301 RAM dump\n    \t00 01 02 03 04 05 06 07 08 09 0A 0B 0C 0D 0E 0F\n");
-  mem_print (0,256,16);
-  for(i=0x80;i<256;i++)
-      i+=instr_print (i)-1;
-}
-
-
-hd6301_copy_ram(unsigned char *ptr) {
-  //  We copy the memory instead of having direct access.
-  int i;
-  if(!ram)//during init
-    return -1;
-  for(i=0;i<NIREGS;i++)
-    ptr[i]=iram[i];
-  for(i=0x16;i<256;i++)
-    ptr[i]=mem_getb (i);
-  return 0;
-}
-
-#endif
 
 BYTE hd6301_check_for_tx_byte() {
   return (!(iram[TRCSR]&TDRE));

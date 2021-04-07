@@ -116,9 +116,7 @@ jsr_addr (addr)
 {
   pushword (reg_getpc ());  /* Return address */
   reg_setpc (addr);
-#if !defined(SSE_IKBD_6301_DISABLE_CALLSTACK)
   callstack_push (addr);  /* subroutine ref. */
-#endif
 }
 inc_addr (addr)   {mem_putb (addr, alu_incbyte (mem_getb (addr)));}
 lsl_addr (addr)   {mem_putb (addr, alu_shlbyte (mem_getb (addr), 0));}
@@ -143,9 +141,7 @@ int_addr (addr)
   pushbyte (reg_getaccb ());
   pushbyte (reg_getccr());
   reg_setpc (mem_getw (addr));
-#if !defined(SSE_IKBD_6301_DISABLE_CALLSTACK)
   callstack_push (reg_getpc ());               /* new subroutine ref. */
-#endif
   reg_setiflag (1);
 }
 
@@ -420,11 +416,7 @@ tpa_inh ()  {reg_setacca (reg_getccr ());}
  */
 trap ()
 {
-#if defined(SSE_IKBD_6301_DISABLE_CALLSTACK)
-  u_int  routine = 0;
-#else
   u_int  routine = callstack_peek_addr ();
-#endif
   char  *p       = (char *) sym_find_name (routine);
   warning ("trap: pc:%04x\nSubroutine: %04x %s\n",
      reg_getpc (), routine, p ? p : "");
@@ -673,9 +665,7 @@ int_6811 (addr)
   pushbyte (reg_getaccb ());
   pushbyte (reg_getccr ());
   reg_setpc (mem_getw (addr));
-#if !defined(SSE_IKBD_6301_DISABLE_CALLSTACK)
   callstack_push (reg_getpc ());               /* new subroutine ref. */
-#endif
   reg_setiflag (1);
 }
 
@@ -872,11 +862,7 @@ swi_6811 () {int_6811 (0xfff6);}
 test_inh () {reg_setpc (reg_getpc () -1);} /* Infinite loop */
 trap_6811 ()
 {
-#if defined(SSE_IKBD_6301_DISABLE_CALLSTACK)
-  u_int  routine = 0;
-#else
   u_int  routine = callstack_peek_addr ();
-#endif
   char  *p       = (char *) sym_find_name (routine);
 
   warning ("trap: pc:%04x\nSubroutine: %04x %s\n",
@@ -1180,9 +1166,7 @@ int_6805 (addr)
   pushbyte (reg_getacca ());
   pushbyte (reg_getccr ());
   reg_setpc (mem_getw (addr));
-#if !defined(SSE_IKBD_6301_DISABLE_CALLSTACK)
   callstack_push (reg_getpc ());               /* new subroutine ref. */
-#endif
   reg_setiflag (1);
 }
 
@@ -1202,12 +1186,8 @@ swi_6805  ()
 
 trap_6805 ()
 {
-#if defined(SSE_IKBD_6301_DISABLE_CALLSTACK)
-  warning ("trap: pc:%04x\n",reg_getpc ());
-#else
   warning ("trap: pc:%04x\nSubroutine: %04x\n",
      reg_getpc (), callstack_peek_addr ());
-#endif
 }
 
 #endif /* M6805 */

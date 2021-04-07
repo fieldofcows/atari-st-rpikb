@@ -70,33 +70,6 @@ extern unsigned int mouse_y_counter;
 
 #define USE_PROTOTYPES 
 
-#if defined(BCC_BUILD)//defined in makefile
-#pragma warn- 8008
-#pragma warn- 8019 // code has no effect
-#pragma warn- 8045
-#pragma warn- 8060
-#pragma warn- 8061
-#pragma warn- 8065
-#pragma warn- 8066
-#pragma warn- 8070
-#pragma warn- 8071
-#endif
-
-
-// for use by Steem Debugger
-#if defined(SSE_DEBUGGER)
-extern 
-#ifdef __cplusplus
-"C" 
-#endif
-int hd6301_dump_ram();
-extern 
-#ifdef __cplusplus
-"C" 
-#endif
-int hd6301_copy_ram(unsigned char *ptr);
-#endif//dbg
-
 #ifdef __cplusplus
 }                       // extern "C" {
 #endif

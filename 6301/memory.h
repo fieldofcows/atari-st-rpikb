@@ -38,12 +38,10 @@ extern u_char  *ram;    /* Physical storage for simulated RAM */
  * There is currently no breaks_start and breaks_end variables,
  * so another start value than 0 will not work.
  */
-#if !defined(SSE_IKBD_6301_DISABLE_BREAKS)
 extern u_char *breaks;    /* Physical storage for breakpoints */
 extern int    break_flag; /* Non-zero if an address containing a
            breakpoint has been accessed by mem_xxx */
 extern u_int  break_addr; /* Last breakpoint address accessed */
-#endif
 
 /*
  *  mem_getb - called to get a byte from an address
@@ -53,12 +51,10 @@ mem_getb (addr)
   u_int addr;
 {
   int offs = addr - ireg_start;
-#if !defined(SSE_IKBD_6301_DISABLE_BREAKS)
   if (breaks[addr]) {
     break_flag = 1; /* Signal execution loop to stop */
     break_addr = addr;
   }
-#endif
   //ASSERT(!ireg_start);
   if (offs >= 0 && offs < NIREGS) {
     if(offs==DDR1||offs==DDR2||offs==DDR3||offs==DDR4
@@ -76,21 +72,15 @@ mem_getb (addr)
     } else
       return iram[offs];
     } else if (addr >= ram_start && addr <= ram_end) {
-#if defined(SSE_IKBD_6301_MINIRAM)
       if(addr>=0xF000)
         return ram[addr-0xF000+256];
       else if(addr<0x80||addr>=256)
         return 0xff; // error
       else
-#endif
     return ram[addr];
   } else {
-#if defined(SSE_IKBD_6301_DISABLE_CALLSTACK)
-    error ("mem_getb: addr=%04x\n",addr);
-#else
     error ("mem_getb: addr=%04x, subroutine %04x\n",
       addr, callstack_peek_addr ());
-#endif
     return 0;
   }
 }
@@ -115,12 +105,10 @@ mem_putb (addr, value)
 {
   int offs = addr - ireg_start; /* Address of on-chip memory */
   //ASSERT(addr != 0x83);
-#if !defined(SSE_IKBD_6301_DISABLE_BREAKS)
   if (breaks[addr]) {
     break_flag = 1; /* Signal execution loop to stop */
     break_addr = addr;
   }
-#endif
   if (offs >= 0 && offs < NIREGS) {
     if(offs==RDR||offs==FRC||offs==ICR)
     {
@@ -134,21 +122,15 @@ mem_putb (addr, value)
     else
       iram [offs] = value;
   } else if (addr >= ram_start && addr <= ram_end) {
-#if defined(SSE_IKBD_6301_MINIRAM)
       if(addr>=0xF000)
         ram[addr-0xF000+256]=value;
       else if(addr<0x80||addr>=256)
         ; // error
       else
-#endif
     ram [addr] = value;
   } else {
-#if defined(SSE_IKBD_6301_DISABLE_CALLSTACK)
-    error ("mem_putb: addr=%04x\n", addr);
-#else
     error ("mem_putb: addr=%04x, subroutine %04x\n",
       addr, callstack_peek_addr ());
-#endif
   }
 }
 
