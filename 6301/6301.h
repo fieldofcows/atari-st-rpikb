@@ -43,6 +43,9 @@ extern "C" {
 #include <stdio.h>
 #include <sys/types.h>
 
+unsigned int _rotr(unsigned int Data, unsigned int Bits);
+unsigned int _rotl(unsigned int Data, unsigned int Bits);
+
 typedef int64_t COUNTER_VAR;
 typedef unsigned char BYTE;
 typedef unsigned short WORD;

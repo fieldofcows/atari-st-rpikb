@@ -3,8 +3,6 @@
 #include <fcntl.h>
 #include <stdio.h>
 #include <linux/input.h>
-#include <termios.h>
-#include <pthread.h>
 #include <signal.h>
 #include <stdint.h>
 #include <time.h>
@@ -14,6 +12,9 @@
 #include "6301.h"
 #include "THD6301.h"
 #include "options.h"
+#include <asm-generic/ioctls.h>
+#include <asm-generic/termbits.h>
+#include "cpu.h"
 
 BYTE    ST_Key_Down[128];
 THD6301 Ikbd;
@@ -32,7 +33,7 @@ static COUNTER_VAR  tick_count = 0;
 void handle_send_to_st() {
     if (hd6301_check_for_tx_byte()) {
         BYTE bt = hd6301_read_tx_byte();
-        printf("6301 -> ST %X\n", bt);
+        //printf("6301 -> ST %X\n", bt);
         write(ser, &bt, 1);
     }
 
@@ -45,6 +46,44 @@ void handle_rx_from_st() {
         rx_from_st.pop();
         Ikbd.rdrs = bt;
         hd6301_receive_byte(bt);        
+    }
+}
+
+static int x_ticks = 0;
+static int y_ticks = 0;
+static COUNTER_VAR cur_tick = 0;
+static COUNTER_VAR next_x_tick = 0;
+static COUNTER_VAR next_y_tick = 0;
+
+#define MIN(x, y) ((x) < (y) ? (x) : (y))
+
+void set_mouse_speed_x(int x) 
+{
+    if (x != 0) {
+        double freq = MIN((abs(x) - 1) * 10.0 + 100.0, 1500.0);
+        freq = (x > 0) ? freq : -freq;
+        x_ticks = 1000.0 / freq;
+        next_x_tick = cur_tick + abs(x_ticks);
+    }
+    else 
+    {
+        x_ticks = 0;
+        next_x_tick = 0;
+    }
+}
+
+void set_mouse_speed_y(int y) 
+{
+    if (y != 0) {
+        double freq = MIN((abs(y) - 1) * 10.0 + 100.0, 1500.0);
+        freq = (y > 0) ? freq : -freq;
+        y_ticks = 1000.0 / freq;
+        next_y_tick = cur_tick + abs(y_ticks);
+    }
+    else 
+    {
+        y_ticks = 0;
+        next_y_tick = 0;
     }
 }
 
@@ -84,7 +123,13 @@ void handle_keyboard()
 
 void handle_mouse() 
 {
+    int num_events = 0;
+    static int max_events = 0;
     struct input_event evts[100];
+
+    int val_x = 0;
+    int val_y = 0;
+
     // Read any pending events
     int count = read(ms, evts, sizeof(evts));
     if (count != -1) {
@@ -95,34 +140,31 @@ void handle_mouse()
             if (evts[i].type == EV_KEY)
             {
                 if (evts[i].code == BTN_LEFT)
-                    mousek = (mousek & 0xfe) | (evts[i].value ? 1 : 0);
-                if (evts[i].code == BTN_RIGHT)
                     mousek = (mousek & 0xfd) | (evts[i].value ? 2 : 0);
+                if (evts[i].code == BTN_RIGHT)
+                    mousek = (mousek & 0xfe) | (evts[i].value ? 1 : 0);
                 //send_mouse(0, 0);
             }
             // Check for mouse movement
             if (evts[i].type == EV_REL)
             {
-                // Clamp to +/- 100
-                int value = evts[i].value;
-                if (value > 100) 
-                    value = 100;
-                if (value < -100) 
-                    value = -100;
-                unsigned char x = (evts[i].code == 0) ? (unsigned char)value : 0;
-                unsigned char y = (evts[i].code == 1) ? (unsigned char)value : 0;
-                Ikbd.click_x = 0;
-                Ikbd.click_y = 0;
-                Ikbd.MouseVblDeltaX = x;
-                Ikbd.MouseVblDeltaY = y;
-                Ikbd.MouseCyclesPerTickX = x ? (1000 / abs(x)) : 0;
-                Ikbd.MouseCyclesPerTickY = y ? (1000 / abs(y)) : 0;
-                Ikbd.MouseNextTickX = Ikbd.MouseCyclesPerTickY = tick_count / 100;
-                //send_mouse(x, y);
+                if (evts[i].code == 0) 
+                {
+                    val_x += evts[i].value;
+                }
+                else if (evts[i].code == 1) 
+                {
+                    val_y += evts[i].value;
+                }
             }
         }
     }
+    set_mouse_speed_x(val_x);
+    set_mouse_speed_y(val_y);
 }
+
+extern unsigned int mouse_x_counter;
+extern unsigned int mouse_y_counter;
 
 timespec diff(timespec start, timespec end)
 {
@@ -137,33 +179,38 @@ timespec diff(timespec start, timespec end)
 	return temp;
 }
 
-void* run_cpu(void*) 
+int instr_exec ();
+
+// Needs to be called every 1ms
+void update_mouse() 
 {
-    timespec last_time;
 
-    // Initialise the keyboard controller
-    Ikbd.Init();
-    Ikbd.ResetChip(1);
-    Ikbd.MouseCyclesPerTickX = 1000;
-    Ikbd.MouseCyclesPerTickY = 1000;
-
-    clock_gettime(CLOCK_PROCESS_CPUTIME_ID, &last_time);
-    while (!terminate_cpu) {
-        // Cycle the CPU, keeping track of how many nanoseconds since the last cycle
-        timespec cur_time;
-        clock_gettime(CLOCK_PROCESS_CPUTIME_ID, &cur_time);
-        timespec diff_time = diff(last_time, cur_time);
-        last_time = cur_time;
-        tick_count += diff_time.tv_nsec;
-
-        hd6301_run_cycles(tick_count / 100);
-        handle_send_to_st();
-        handle_rx_from_st();
+    ++cur_tick;
+    
+    if ((x_ticks != 0) && (cur_tick >= next_x_tick))
+    {
+        mouse_x_counter = (x_ticks > 0) ? _rotr(mouse_x_counter, 1) : _rotl(mouse_x_counter, 1);
+        next_x_tick += abs(x_ticks);
     }
-    return NULL;
+    if ((y_ticks != 0) && (cur_tick >= next_y_tick))
+    {
+        mouse_y_counter = (y_ticks > 0) ? _rotr(mouse_y_counter, 1) : _rotl(mouse_y_counter, 1);
+        next_y_tick += abs(y_ticks);
+    }
+
 }
 
-int instr_exec ();
+int setbaud(int fd, int speed)
+{
+	struct termios2 tio;
+	ioctl(fd, TCGETS2, &tio);
+	//tio.c_cflag &= ~CBAUD;
+	tio.c_cflag = BOTHER | CS8 | CLOCAL | CREAD;
+    tio.c_iflag = IGNPAR;
+	tio.c_ispeed = speed;
+	tio.c_ospeed = speed;
+	return ioctl(fd, TCSETS2, &tio);
+}
 
 int main(int argc, char *argv[])
 {
@@ -196,17 +243,7 @@ int main(int argc, char *argv[])
     }
 
     // Set serial port options
-    struct termios seropt;
-	tcgetattr(ser, &seropt);
-	seropt.c_cflag = B9600 | CS8 | CLOCAL | CREAD;
-	seropt.c_iflag = IGNPAR;
-	seropt.c_oflag = 0;
-	seropt.c_lflag = 0;
-	tcflush(ser, TCIFLUSH);
-	tcsetattr(ser, TCSANOW, &seropt);
-
-    //pthread_t cpu_thread;
-    //pthread_create(&cpu_thread, NULL, run_cpu, NULL);
+    setbaud(ser, 8000);
 
     // Initialise the keyboard controller
     Ikbd.Init();
@@ -217,12 +254,16 @@ int main(int argc, char *argv[])
 
     // Keep track of time so we can get a fairly accurate clock cycle
     timespec last_time;
-    timespec frame_time;
-    timespec second_time;
+    timespec ms_time;
+    unsigned long ms_count = 0;
+    
     clock_gettime(CLOCK_PROCESS_CPUTIME_ID, &last_time);
-    frame_time.tv_nsec = 0;
-    second_time.tv_nsec = 0;
+    ms_time.tv_nsec = 0;
+
+
+
     int count = 0;
+
 
     while (1)
     {
@@ -231,37 +272,23 @@ int main(int argc, char *argv[])
         clock_gettime(CLOCK_PROCESS_CPUTIME_ID, &cur_time);
         timespec diff_time = diff(last_time, cur_time);
         last_time = cur_time;
-        frame_time.tv_nsec += diff_time.tv_nsec;
-        second_time.tv_nsec += diff_time.tv_nsec;
+        ms_time.tv_nsec += diff_time.tv_nsec;
 
-
-        if (frame_time.tv_nsec > (1000 * 1000 * 20)) 
-        {
+        if (ms_time.tv_nsec > 1000 * 1000) {
             ++count;
-            hd6301_run_clocks(20000);
-
+            hd6301_run_clocks(1000);
             handle_send_to_st();
             handle_rx_from_st();
             handle_keyboard();
-            handle_mouse();
-            frame_time.tv_nsec = 0;
-        }
-        if (second_time.tv_nsec > (1000 * 1000 * 1000)) 
-        {
-            //printf("Count = %d\n", count);
-            static bool b = false;
-            if (!b) {
-                b = true;
-                rx_from_st.push(0x80);
-                rx_from_st.push(0x1);
-            }
-            second_time.tv_nsec = 0;
-            count = 0;
-        }
+            update_mouse();
+            ms_time.tv_nsec = 0;
+            ++ms_count;
 
-        //sleep(1);
-        //printf("ns = %llu\n", ns);
+            // 10ms handler
+            if ((ms_count % 10) == 0) {
+                handle_mouse();
+            }
+        }
     }
 
-    //pthread_join(cpu_thread, NULL);
 }

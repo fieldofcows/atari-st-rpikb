@@ -263,6 +263,7 @@ static u_char dr4_getb (offs)
     debug1=cpu.ncycles;
   }
 #endif
+#if 0
   if(!(ddr4&0xF) && (ddr2&1)
     && (Ikbd.MouseVblDeltaX || Ikbd.MouseVblDeltaY) )
   {
@@ -297,6 +298,7 @@ static u_char dr4_getb (offs)
       }
     }
   }
+  #endif
 /*  Joystick movements
     Movement is signalled by cleared bits.
 */
