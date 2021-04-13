@@ -254,51 +254,8 @@ static u_char dr4_getb (offs)
     registry when read. To emulate this, we rotate a $3 (0011) sequence and
     send the last bits to registry bits 0-1 for horizontal movement, 2-3
     for vertical movement. */
-#if 0 //tmp to check frequency
-  if(!(ddr4&0xF) && (ddr2&1) 
-    && (Ikbd.MouseVblDeltaX || Ikbd.MouseVblDeltaY) )
-  {
-    TRACE("6301 (PC %X) reads mouse on cycle %d, %d after last read\n",
-      reg_getpc(),cpu.ncycles,cpu.ncycles-debug1);
-    debug1=cpu.ncycles;
-  }
-#endif
-#if 0
-  if(!(ddr4&0xF) && (ddr2&1)
-    && (Ikbd.MouseVblDeltaX || Ikbd.MouseVblDeltaY) )
-  {
-    // need to update mouse at each read, because the ROM checks for stability
-    // emulating correct mouse speed is pretty tough
-    if(Ikbd.MouseVblDeltaX)
-    {
-      while(Ikbd.MouseCyclesPerTickX && cpu.ncycles>=Ikbd.MouseNextTickX
-        &&Ikbd.click_x<abs_quick(Ikbd.MouseVblDeltaX))
-      {
-        if(Ikbd.MouseVblDeltaX<0) // left
-          mouse_x_counter=_rotl(mouse_x_counter,1);
-        else  // right
-          mouse_x_counter=_rotr(mouse_x_counter,1);
-        Ikbd.click_x++;
-        Ikbd.MouseNextTickX+=Ikbd.MouseCyclesPerTickX;
-        //printf("mouse tick x %d on %d, next on %d\n",Ikbd.click_x,cpu.ncycles,Ikbd.MouseNextTickX);
-      }
-    }
-    if(Ikbd.MouseVblDeltaY)
-    {
-      while(Ikbd.MouseCyclesPerTickY && cpu.ncycles>=Ikbd.MouseNextTickY
-        &&Ikbd.click_y<abs_quick(Ikbd.MouseVblDeltaY))
-      {
-        if(Ikbd.MouseVblDeltaY<0) // up
-          mouse_y_counter=_rotl(mouse_y_counter,1);
-        else  // down
-          mouse_y_counter=_rotr(mouse_y_counter,1);
-        Ikbd.click_y++;
-        Ikbd.MouseNextTickY+=Ikbd.MouseCyclesPerTickY;
-        //printf("mouse tick y %d on %d, next on %d\n",Ikbd.click_y,cpu.ncycles,Ikbd.MouseNextTickY);
-      }
-    }
-  }
-  #endif
+  update_mouse();
+
 /*  Joystick movements
     Movement is signalled by cleared bits.
 */

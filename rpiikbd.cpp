@@ -15,6 +15,7 @@
 #include <asm-generic/ioctls.h>
 #include <asm-generic/termbits.h>
 #include "cpu.h"
+#include <cerrno>
 
 BYTE    ST_Key_Down[128];
 THD6301 Ikbd;
@@ -40,50 +41,32 @@ void handle_send_to_st() {
 }
 
 void handle_rx_from_st() {
-    if (!rx_from_st.empty()) {
-        BYTE bt = rx_from_st.front();
+    BYTE bt;
+    int val = read(ser, &bt, 1);
+    if (val != -1)
+    {
         printf("ST -> 6301 %X\n", bt);
-        rx_from_st.pop();
         Ikbd.rdrs = bt;
         hd6301_receive_byte(bt);        
     }
 }
 
-static int x_ticks = 0;
-static int y_ticks = 0;
-static COUNTER_VAR cur_tick = 0;
-static COUNTER_VAR next_x_tick = 0;
-static COUNTER_VAR next_y_tick = 0;
+static int x_cycles = 0;
+static int y_cycles = 0;
+static COUNTER_VAR next_x_cycle = 0;
+static COUNTER_VAR next_y_cycle = 0;
 
 #define MIN(x, y) ((x) < (y) ? (x) : (y))
 
-void set_mouse_speed_x(int x) 
+void set_mouse_speed(int speed, int& cycles, COUNTER_VAR& next_cycle)
 {
-    if (x != 0) {
-        double freq = MIN((abs(x) - 1) * 10.0 + 100.0, 1500.0);
-        freq = (x > 0) ? freq : -freq;
-        x_ticks = 1000.0 / freq;
-        next_x_tick = cur_tick + abs(x_ticks);
-    }
-    else 
-    {
-        x_ticks = 0;
-        next_x_tick = 0;
-    }
-}
-
-void set_mouse_speed_y(int y) 
-{
-    if (y != 0) {
-        double freq = MIN((abs(y) - 1) * 10.0 + 100.0, 1500.0);
-        freq = (y > 0) ? freq : -freq;
-        y_ticks = 1000.0 / freq;
-        next_y_tick = cur_tick + abs(y_ticks);
-    }
-    else 
-    {
-        y_ticks = 0;
-        next_y_tick = 0;
+    cycles = 0;
+    next_cycle = 0;
+    if (speed != 0) {
+        double freq = MIN((abs(speed) - 1) * 20.0 + 75.0, 1500.0);
+        freq = (speed > 0) ? freq : -freq;
+        cycles = (1000.0 * 1000.0) / freq;
+        next_cycle = cpu.ncycles + abs(cycles);
     }
 }
 
@@ -159,8 +142,8 @@ void handle_mouse()
             }
         }
     }
-    set_mouse_speed_x(val_x);
-    set_mouse_speed_y(val_y);
+    set_mouse_speed(val_x, x_cycles, next_x_cycle);
+    set_mouse_speed(val_y, y_cycles, next_y_cycle);
 }
 
 extern unsigned int mouse_x_counter;
@@ -182,33 +165,36 @@ timespec diff(timespec start, timespec end)
 int instr_exec ();
 
 // Needs to be called every 1ms
+extern "C" 
+{
 void update_mouse() 
 {
-
-    ++cur_tick;
-    
-    if ((x_ticks != 0) && (cur_tick >= next_x_tick))
+    if ((x_cycles != 0) && (cpu.ncycles >= next_x_cycle))
     {
-        mouse_x_counter = (x_ticks > 0) ? _rotr(mouse_x_counter, 1) : _rotl(mouse_x_counter, 1);
-        next_x_tick += abs(x_ticks);
+        mouse_x_counter = (x_cycles > 0) ? _rotr(mouse_x_counter, 1) : _rotl(mouse_x_counter, 1);
+        next_x_cycle += abs(x_cycles);
     }
-    if ((y_ticks != 0) && (cur_tick >= next_y_tick))
+    if ((y_cycles != 0) && (cpu.ncycles >= next_y_cycle))
     {
-        mouse_y_counter = (y_ticks > 0) ? _rotr(mouse_y_counter, 1) : _rotl(mouse_y_counter, 1);
-        next_y_tick += abs(y_ticks);
+        mouse_y_counter = (y_cycles > 0) ? _rotr(mouse_y_counter, 1) : _rotl(mouse_y_counter, 1);
+        next_y_cycle += abs(y_cycles);
     }
 
+}
 }
 
 int setbaud(int fd, int speed)
 {
 	struct termios2 tio;
 	ioctl(fd, TCGETS2, &tio);
-	//tio.c_cflag &= ~CBAUD;
+	
 	tio.c_cflag = BOTHER | CS8 | CLOCAL | CREAD;
-    tio.c_iflag = IGNPAR;
+	tio.c_iflag = IGNPAR;
+    tio.c_oflag = 0;
+    tio.c_lflag = 0;
 	tio.c_ispeed = speed;
 	tio.c_ospeed = speed;
+
 	return ioctl(fd, TCSETS2, &tio);
 }
 
@@ -223,7 +209,7 @@ int main(int argc, char *argv[])
     // Open the keyboard, mouse and serial port
 	kbd = open(argv[1], O_RDONLY | O_NONBLOCK);
 	ms = open(argv[2], O_RDONLY | O_NONBLOCK);
-	ser = open("/dev/ttyAMA0", O_RDWR | O_NOCTTY | O_NDELAY);
+	ser = open("/dev/ttyAMA0", O_RDWR | O_NOCTTY | O_NONBLOCK);
 
     if (kbd == -1) {
         printf("Could not open keyboard device\n");
@@ -280,7 +266,6 @@ int main(int argc, char *argv[])
             handle_send_to_st();
             handle_rx_from_st();
             handle_keyboard();
-            update_mouse();
             ms_time.tv_nsec = 0;
             ++ms_count;
 
