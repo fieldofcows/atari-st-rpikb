@@ -58,7 +58,6 @@ BYTE* hd6301_init();
 int hd6301_destroy(); // like a C++ destructor
 int hd6301_reset(int Cold); 
 void hd6301_run_clocks(COUNTER_VAR clocks);
-int hd6301_run_cycles(COUNTER_VAR to_m68_cycle);
 int hd6301_load_save(int one_if_save, unsigned char *buffer); // for snaphot
 int hd6301_receive_byte(u_char byte_in); // just passing through
 WORD hd6301_peek(int addr);

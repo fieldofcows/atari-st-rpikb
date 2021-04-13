@@ -34,8 +34,6 @@ This file is used by 6301.c.
 #include "THD6301.h"
 #include "6301.h"
 
-extern "C" BYTE ST_Key_Down[128]; // used by 6301
-extern "C" int mousek; 
 #endif//#ifdef __cplusplus 
 
 extern

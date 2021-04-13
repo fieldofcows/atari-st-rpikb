@@ -10,11 +10,8 @@
 #include "sci.h"
 #include "timer.h"
 #include "ireg.h"
-
-#ifdef USE_PROTOTYPES
-#endif
-
-//#include "options.h"
+#include "AtariSTMouse.h"
+#include "HidInput.h"
 
 /*
  * Start/end of internal register block
@@ -149,7 +146,7 @@ u_int offs;
       {
         mask2=1<<(column+1);
         scancode=get_scancode(dr1bit,column);
-        if(ST_Key_Down[scancode]
+        if(st_keydown(scancode)
           &&  (dr3&mask2) // must be set (diode on)
           &&  (ddr3&mask2)
           )
@@ -160,7 +157,7 @@ u_int offs;
       {
         mask2=1<<(column-7);
         scancode=get_scancode(dr1bit,column);
-        if(ST_Key_Down[scancode]
+        if(st_keydown(scancode)
           &&  (dr4&mask2) // must be set (diode on)
           &&  (ddr4&mask2)
           )
@@ -202,9 +199,9 @@ static u_char dr2_getb (offs)
 #endif
   //ASSERT(offs==P2);
   value=0xFF; // note bits 5-7=111 in monochip mode, bits 3-4=serial lines
-  if(mousek) // clear the correct bit (see above)
+  if(st_mouse_buttons()) // clear the correct bit (see above)
   {
-    value=(mousek*2)%6;
+    value=(st_mouse_buttons()*2)%6;
 //    TRACE("HD6301 handling mousek %x -> %x\n",mousek,value);
   }
   return value;
@@ -254,7 +251,7 @@ static u_char dr4_getb (offs)
     registry when read. To emulate this, we rotate a $3 (0011) sequence and
     send the last bits to registry bits 0-1 for horizontal movement, 2-3
     for vertical movement. */
-  update_mouse();
+  mouse_tick(cpu.ncycles, &mouse_x_counter, &mouse_y_counter);
 
 /*  Joystick movements
     Movement is signalled by cleared bits.

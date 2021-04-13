@@ -6,6 +6,10 @@ add_executable(rpi6301
     THD6301.cpp
     rpiikbd.cpp
     st_key_lookup_gb.cpp
+    AtariSTMouse.cpp
+    SerialPort.cpp
+    HidInput.cpp
+    util.cpp
     6301/6301.c
 )
 target_include_directories(
@@ -13,6 +17,7 @@ target_include_directories(
     6301
     headers
 )
-add_definitions(-DUNIX -DRPI -DTRACE_6301)
+#add_definitions(-DUNIX -DRPI -DTRACE_6301)
+add_definitions(-DUNIX -DRPI)
 set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wno-implicit-int")
 target_link_libraries(rpi6301 rt pthread)

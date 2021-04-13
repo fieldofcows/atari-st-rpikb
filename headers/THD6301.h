@@ -11,7 +11,6 @@ struct THD6301 {
   COUNTER_VAR MouseNextTickX;
   COUNTER_VAR MouseNextTickY;
   COUNTER_VAR current_m68_cycle; // will lag or be forward
-  int MouseCyclesPerTickX, MouseCyclesPerTickY;
   short MouseVblDeltaX; // must keep separate for true emu
   short MouseVblDeltaY;
   BYTE Initialised; // we do need a rom
@@ -25,7 +24,6 @@ struct THD6301 {
   ~THD6301();
   void ResetChip(int Cold);
   void Init();
-  void Vbl();
 #endif//c++?
 };
 

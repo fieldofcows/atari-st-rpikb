@@ -37,23 +37,11 @@ SSE.
 #include <ikbd.h>
 #include <options.h>
 
-#ifdef UNIX
-unsigned int _rotr(unsigned int Data, unsigned int Bits) {
-  return ((Data >> Bits) | (Data << (32-Bits)));
-}
-unsigned int _rotl(unsigned int Data, unsigned int Bits) {
-  return ((Data << Bits) | (Data >> (32-Bits)));
-}
-
 #pragma GCC diagnostic ignored "-Wimplicit-function-declaration"
-
-#endif
 
 // variables from Steem (declared as extern "C") there
 extern unsigned char  stick[8]; // joysticks
 extern double cpu_cycles_multiplier;
-extern BYTE ST_Key_Down[128];
-extern int mousek;
 
 // our variables that Steem must see
 COUNTER_VAR cycles_run=0; 
@@ -153,48 +141,6 @@ void hd6301_run_clocks(COUNTER_VAR clocks) {
     instr_exec (); // execute one instruction
   }
 }
-
-hd6301_run_cycles(COUNTER_VAR to_m68_cycle) {
-  // Called by Steem to run some cycles (per scanline or to update before IO)
-  COUNTER_VAR cycles_to_run=(to_m68_cycle-Ikbd.current_m68_cycle)/HD6301_CYCLE_DIVISOR;
-  int pc;
-  COUNTER_VAR starting_cycles=cpu.ncycles;
-  if(cycles_to_run<-256 || cycles_to_run>255)
-  {
-    Ikbd.current_m68_cycle=to_m68_cycle; //safety
-    return 0;
-  }
-  // make sure our 6301 is running OK
-  if(!cpu_isrunning())
-  {
-    TRACE("6301 starting cpu\n");
-    cpu_start();
-  }
-  if(iram[TRCSR]&1)
-  {
-    TRACE("6301 waking up (PC %X cycles %lu)\n",reg_getpc(),cpu.ncycles);
-    iram[TRCSR]&=~1;
-  }
-  pc=reg_getpc();
-#ifndef RPI
-  if(OPTION_HACKS && !(pc>=0xF000 && pc<=0xFFFF || pc>=0x80 && pc<=0xFF))
-  {
-    TRACE("PC out of range, resetting chip\n"); 
-    reset(); // hack
-  }
-#endif
-  while(!Ikbd.Crashed && (cycles_run<cycles_to_run))
-  {
-    instr_exec (); // execute one instruction
-    cycles_run=cpu.ncycles-starting_cycles;
-  }
-  Ikbd.ChipCycles=cpu.ncycles; // HD6301 object doesn't know cpu.ncycles
-  cycles_run*=HD6301_CYCLE_DIVISOR;
-  Ikbd.current_m68_cycle+=cycles_run;
-  cycles_run=0;
-  return (int)cycles_run; //unused
-}
-
 
 hd6301_receive_byte(u_char byte_in) {
   //ASSERT(byte_in==Ikbd.rdrs);
