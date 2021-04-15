@@ -35,7 +35,7 @@ void SerialPort::recv(std::vector<unsigned char>& data) const {
     int count = read(handle, buf, sizeof(buf));
     if (count != -1) {
         // Append any newly received data to the end of the current vector
-        data.insert(data.end(), buf, &buf[count-1]);
+        data.insert(data.end(), buf, &buf[count]);
     }
 }
 
