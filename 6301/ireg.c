@@ -258,20 +258,16 @@ static u_char dr4_getb (offs)
 */
   if(!ddr4 && (ddr2&1) && (dr2&1))
   {
-    joy0mvt=stick[0]&0xF; // eliminate fire info
-    joy1mvt=stick[1]&0xF;
-    if(joy0mvt||joy1mvt)
-    {
-      value=0; // not always right (game mouse+joy?) but can't do better yet
-      value|=joy0mvt|(joy1mvt<<4);
-      value=~value;
-      //TRACE("sticks %X 0 %x 1 %X\n",value,stick[0],stick[1]);
+    if (st_mouse_enabled()) {
+      value = (value & (~0xF)) | (mouse_x_counter&3)|((mouse_y_counter&3)<<2);
+      // Add joystick 1
+      value = (value & ~0xf0) | (~st_joystick() & 0xf0);
     }
-  }  
-  if (!IKBDConfig.Port0Joy)
-    value=(value&(~0xF))|(mouse_x_counter&3)|((mouse_y_counter&3)<<2);
-  //iram[offs]=value; //no! Froggies menu would take / and enter as well as 0
-  return value;
+    else {
+      value = ~st_joystick();
+    }
+    return value;
+  }
 }
 
 

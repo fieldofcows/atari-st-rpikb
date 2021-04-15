@@ -31,7 +31,7 @@ void SerialPort::send(const std::vector<unsigned char>& data) const {
 }
 
 void SerialPort::recv(std::vector<unsigned char>& data) const {
-    unsigned char buf[128];
+    unsigned char buf[1];
     int count = read(handle, buf, sizeof(buf));
     if (count != -1) {
         // Append any newly received data to the end of the current vector

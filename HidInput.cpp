@@ -5,6 +5,9 @@
 #include "st_key_lookup.h"
 #include "AtariSTMouse.h"
 
+// Mouse toggle key is set to Scroll Lock
+#define TOGGLE_MOUSE_MODE 70
+
 HidInput::HidInput() {
     key_states.resize(128);
     std::fill(key_states.begin(), key_states.end(), 0);
@@ -15,9 +18,19 @@ HidInput& HidInput::instance() {
     return hid;
 }
 
-void HidInput::open(const std::string& kbdev, const std::string& mousedev) {
+void HidInput::open(const std::string& kbdev, const std::string& mousedev, const std::string joystickdev) {
     keyboard_handle = ::open(kbdev.c_str(), O_RDONLY | O_NONBLOCK);
     mouse_handle = ::open(mousedev.c_str(), O_RDONLY | O_NONBLOCK);
+    if (!joystickdev.empty()) {
+        joystick_handle = ::open(joystickdev.c_str(), O_RDONLY | O_NONBLOCK);
+        if (joystick_handle == -1) {
+            throw new HidInputException("Could not open the joystick device");
+        }
+        if (ioctl(joystick_handle, EVIOCGRAB, 1) != 0) {
+            throw new HidInputException("Could not get exclusive use of the joystick device");
+        }
+    }
+
     if (keyboard_handle == -1) {
         throw new HidInputException("Could not open the keyboard device");
     }
@@ -41,9 +54,16 @@ void HidInput::handle_keyboard() {
         for (int i = 0; i < count; ++i) {
             // Look for a keyboard event
             if ((evts[i].type == EV_KEY) && (evts[i].code < 128)) {
-                unsigned char st_key = st_key_lookup_gb[evts[i].code];
-                if (st_key & 0x7f) {
-                    key_states[st_key] = evts[i].value;
+                if (evts[i].value && (evts[i].code == TOGGLE_MOUSE_MODE)) {
+                    mouse_en = !mouse_en;
+                    printf("Mouse %s, Joystick 0 %s\n", 
+                            mouse_en ? "active" : "inactive", mouse_en ? "inactive" : " active");
+                }
+                else {
+                    unsigned char st_key = st_key_lookup_gb[evts[i].code];
+                    if (st_key & 0x7f) {
+                        key_states[st_key] = evts[i].value;
+                    }
                 }
             }
         }
@@ -84,6 +104,54 @@ void HidInput::handle_mouse(const int64_t cpu_cycles) {
     AtariSTMouse::instance().set_speed(cpu_cycles, val_x, val_y);
 }
 
+void HidInput::handle_joystick() {
+    int joystick = 1;
+
+    if (joystick_handle != -1) {
+        struct input_event evts[64];
+        // Read any pending events
+        int count = read(joystick_handle, evts, sizeof(evts));
+        if (count != -1) {
+            count /= sizeof(struct input_event);
+            for (int i = 0; i < count; ++i) {
+                // Axis switches
+                if (evts[i].type == EV_ABS) {
+                    int bit;
+                    if (evts[i].code == ABS_Y) {
+                        bit = 0;
+                    } else {
+                        bit = 2;
+                    }
+                    if (joystick == 1) {
+                        bit += 4;
+                    }
+                    // Up and left have a value < 0x80 (0 for digital)
+                    // Down and right have a value > 0x80 (0xff for digital)
+                    joystick_state &= ~(0x3 << bit);
+                    if (evts[i].value < 0x80) {
+                        joystick_state |= 1 << bit;
+                    }
+                    else if (evts[i].value > 0x80) {
+                        joystick_state |= 1 << (bit + 1);
+                    }
+                }
+                // Buttons
+                else if (evts[i].type == EV_KEY) {
+                    // The joystick buttons share the mouse button state
+                    if ((evts[i].code == BTN_TRIGGER) || (evts[i].code == BTN_THUMB) ||
+                        (evts[i].code == BTN_THUMB2) || (evts[i].code == BTN_TOP)) {
+                        if (joystick == 0)
+                            mouse_state = (mouse_state & 0xfd) | (evts[i].value ? 2 : 0);
+                        else
+                            mouse_state = (mouse_state & 0xfe) | (evts[i].value ? 1 : 0);
+                    }
+                }
+            }
+        }
+    }
+}
+
+
 void HidInput::reset() {
      std::fill(key_states.begin(), key_states.end(), 0);   
 }
@@ -99,10 +167,26 @@ int HidInput::mouse_buttons() const {
     return mouse_state;
 }
 
+unsigned char HidInput::joystick() const {
+    return joystick_state;
+}
+
+bool HidInput::mouse_enabled() const {
+    return mouse_en;
+}
+
 unsigned char st_keydown(const unsigned char code){
     return HidInput::instance().keydown(code);
 }
 
 int st_mouse_buttons() {
     return HidInput::instance().mouse_buttons();
+}
+
+unsigned char st_joystick() {
+    return HidInput::instance().joystick();
+}
+
+int st_mouse_enabled() {
+    return HidInput::instance().mouse_enabled() ? 1 : 0;
 }

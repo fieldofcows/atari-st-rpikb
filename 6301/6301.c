@@ -239,3 +239,6 @@ BYTE hd6301_read_tx_byte() {
     return result;
 }
 
+int hd6301_sci_busy() {
+  return (iram[TRCSR] & RDRF) ? 1 : 0;
+}

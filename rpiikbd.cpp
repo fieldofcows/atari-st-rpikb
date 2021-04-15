@@ -23,30 +23,32 @@ void handle_send_to_st() {
     if (hd6301_check_for_tx_byte()) {
         std::vector<unsigned char> data;
         data.push_back(hd6301_read_tx_byte());
-        //printf("6301 -> ST %X\n", bt);
+        //printf("6301 -> ST %X\n", data[0]);
         SerialPort::instance().send(data);
     }
 }
 
 void handle_rx_from_st() {
-    std::vector<unsigned char> data;
-    SerialPort::instance().recv(data);
-    for (auto const& bt: data) {
-        printf("ST -> 6301 %X\n", bt);
-        Ikbd.rdrs = bt;
-        hd6301_receive_byte(bt);
+    if (!hd6301_sci_busy()) {
+        std::vector<unsigned char> data;
+        SerialPort::instance().recv(data);
+        for (auto const& bt: data) {
+            printf("ST -> 6301 %X\n", bt);
+            Ikbd.rdrs = bt;
+            hd6301_receive_byte(bt);
+        }
     }
 }
 
 int main(int argc, char* argv[]) {
-    if (argc != 3) {
-        printf("Usage: rpi6301 kb_device mouse_device\n");
+    if (argc < 3) {
+        printf("Usage: rpi6301 kb_device mouse_device [joystick_device] \n");
         return -1;
     }
 
     // Open the keyboard, mouse and serial port
     SerialPort::instance().open();
-    HidInput::instance().open(argv[1], argv[2]);
+    HidInput::instance().open(argv[1], argv[2], (argc < 4) ? "" : argv[3]);
 
     // Initialise the keyboard controller
     Ikbd.Init();
@@ -75,14 +77,15 @@ int main(int argc, char* argv[]) {
             ++count;
             hd6301_run_clocks(1000);
             handle_send_to_st();
-            handle_rx_from_st();
             HidInput::instance().handle_keyboard();
             ms_time.tv_nsec = 0;
             ++ms_count;
 
             // 10ms handler
             if ((ms_count % 10) == 0) {
+                handle_rx_from_st();
                 HidInput::instance().handle_mouse(cpu.ncycles);
+                HidInput::instance().handle_joystick();
             }
         }
     }

@@ -64,6 +64,7 @@ WORD hd6301_peek(int addr);
 void hd6301_poke(int addr, BYTE value);
 BYTE hd6301_check_for_tx_byte();
 BYTE hd6301_read_tx_byte();
+int hd6301_sci_busy();
 
 #define MOUSE_MASK 0x33333333 // 20bit on real HW?
 
