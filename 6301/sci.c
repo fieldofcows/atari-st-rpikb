@@ -35,10 +35,6 @@ $0013    | B | TDR   | Transmit Data Register                         | W0
  * increment number of outstanding rx interrupts
  */
 
-/*  This function is called by Steem when a byte sent to the 6301 is supposed
-    to have been received in rdrs.
-*/
-
 sci_in(s, nbytes)
     u_char *s;
 int nbytes;
@@ -46,14 +42,13 @@ int nbytes;
   // detect OVR condition, set flag at once (unlike ACIA)
   if (iram[TRCSR] & RDRF)
   {
-    TRACE("6301 OVR RDR %X RDRS %X SR %X->%X\n", Ikbd.rdr, Ikbd.rdrs, iram[TRCSR], iram[TRCSR] | ORFE);
+    TRACE("6301 OVR SR %X->%X\n", iram[TRCSR], iram[TRCSR] | ORFE);
     iram[TRCSR] |= ORFE; // hardware sets overrun bit
   }
   else
   {
-    Ikbd.rdr = *s;
-    ireg_putb(RDR, Ikbd.rdr);
-    TRACE("6301 RDR %X\n", Ikbd.rdr);
+    ireg_putb(RDR, *s);
+    TRACE("6301 RDR %X\n", *s);
   }
   iram[TRCSR] |= RDRF; // set RDRF
 
@@ -138,7 +133,7 @@ u_char rdr_getb(offs)
 
     if (iram[TRCSR] & RDRF)
     {
-      TRACE("6301 (PC %X) reads RDR %X\n", reg_getpc(), Ikbd.rdr);
+      TRACE("6301 (PC %X)\n", reg_getpc());
       iram[TRCSR] &= ~RDRF;
     }
     if (iram[TRCSR] & ORFE)

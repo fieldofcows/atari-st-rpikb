@@ -14,7 +14,6 @@
 #include "reg.h"
 #include "sci.h"
 #include "timer.h"
-#include "THD6301.h"
 
 #ifdef USE_PROTOTYPES
 #include "instr.h"
@@ -84,7 +83,7 @@ instr_exec ()
     if(!(pc>=0x80&&pc<0xFFFF)) // eg bad snapshot
     {
       TRACE("pc=%x, 6301 emu is hopelessly crashed!\n",pc);
-      Ikbd.Crashed=1;
+      crashed = 1;
       return -1;
     }
 

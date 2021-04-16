@@ -1,3 +1,25 @@
+/*
+ * Atari ST Raspberry Pi IKDB Emulator
+ * Copyright (C) 2021 Roy Hopkins
+ * 
+ * This file has been copied and modified from the Steem SSE project.
+ * The original copyright notice has been retained below this one.
+ * 
+ * This program is free software; you can redistribute it and/or
+ * modify it under the terms of the GNU General Public License
+ * as published by the Free Software Foundation; either version 2
+ * of the License, or (at your option) any later version.
+ * 
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ * 
+ * You should have received a copy of the GNU General Public License
+ * along with this program; if not, write to the Free Software
+ * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
+*/
+
 /*---------------------------------------------------------------------------
 PROJECT: Steem SSE
 Atari ST emulator
@@ -58,10 +80,7 @@ BYTE* hd6301_init();
 int hd6301_destroy(); // like a C++ destructor
 int hd6301_reset(int Cold); 
 void hd6301_run_clocks(COUNTER_VAR clocks);
-int hd6301_load_save(int one_if_save, unsigned char *buffer); // for snaphot
 int hd6301_receive_byte(u_char byte_in); // just passing through
-WORD hd6301_peek(int addr);
-void hd6301_poke(int addr, BYTE value);
 void hd6301_tx_empty(int empty);
 int hd6301_sci_busy();
 
@@ -69,6 +88,8 @@ int hd6301_sci_busy();
 
 extern unsigned int mouse_x_counter;
 extern unsigned int mouse_y_counter;
+
+extern int crashed;
 
 #define USE_PROTOTYPES 
 
