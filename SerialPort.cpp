@@ -5,14 +5,50 @@
 #include <sys/ioctl.h>
 #include <unistd.h>
 
+// We flag the buffer as 'empty' if it has less than this amount of bytes queued. This
+// provides a small queue that optimises the serial port performance. Important for
+// smooth mouse handling.
+#define BUFFER_SIZE 8
+
+extern "C" {
+    int tcdrain(int filedes);
+}
+
 // The HD6301 in the ST communicates at 7812 baud. For some reason, configuring the RPi to use
 // 8000 baud results in the correct baud rate of 7812 (measured on oscilloscope). It would be
 // interesting to determine why.
 #define CUSTOM_BAUD 8000
 
+SerialPort::~SerialPort() {
+    close();
+}
+
 SerialPort& SerialPort::instance() {
     static SerialPort serial;
     return serial;
+}
+
+void SerialPort::handle_send() {
+    while (thread_run) {
+        // Make sure the TX buf is empty before locking the mutex
+        tcdrain(handle);
+        std::unique_lock<std::mutex> lock(mutex);
+        cond.wait(lock, [this]{ return !thread_run || !tx_buf.empty(); });
+        // Dequeue a single byte. We will allow another byte to be queued
+        // whilst we block sending this one
+        while (!tx_buf.empty()) {
+            unsigned char data = tx_buf.front();
+            tx_buf.pop();
+            // Unlock so more data can be queued whilst we are sending
+            lock.unlock();
+
+            write(handle, &data, 1);
+            lock.lock();
+        }
+
+        // No more data if here. Mutex is locked
+        lock.unlock();
+    }
 }
 
 void SerialPort::open() {
@@ -23,20 +59,31 @@ void SerialPort::open() {
         }
         // Setup the port parameters
         configure();
+        // Start the thread that is used to send data over the serial port
+        thread_run = true;
+        serial_thread = std::thread(&SerialPort::handle_send, this);
     }
 }
 
-void SerialPort::send(const std::vector<unsigned char>& data) const {
-    write(handle, data.data(), data.size());
+void SerialPort::close() {
+    if (handle != -1) {
+        thread_run = false;
+        cond.notify_one();
+        serial_thread.join();
+        ::close(handle);
+        handle = -1;
+    }
 }
 
-void SerialPort::recv(std::vector<unsigned char>& data) const {
-    unsigned char buf[1];
-    int count = read(handle, buf, sizeof(buf));
-    if (count != -1) {
-        // Append any newly received data to the end of the current vector
-        data.insert(data.end(), buf, &buf[count]);
-    }
+void SerialPort::send(const unsigned char data) {
+    std::lock_guard<std::mutex> lock(mutex);
+    tx_buf.push(data);
+    cond.notify_one();
+}
+
+bool SerialPort::recv(unsigned char& data) const {
+    int count = read(handle, &data, 1);
+    return count > 0;
 }
 
 void SerialPort::configure() {
@@ -55,4 +102,13 @@ void SerialPort::configure() {
     if (ioctl(handle, TCSETS2, &tio) == -1) {
         throw new SerialPortException("Could not write serial port configuration");
     }
+}
+
+bool SerialPort::send_buf_empty() const {
+    std::lock_guard<std::mutex> lock(mutex);
+    return tx_buf.size() < BUFFER_SIZE;
+}
+
+void serial_send(unsigned char data) {
+    SerialPort::instance().send(data);
 }

@@ -62,8 +62,7 @@ int hd6301_load_save(int one_if_save, unsigned char *buffer); // for snaphot
 int hd6301_receive_byte(u_char byte_in); // just passing through
 WORD hd6301_peek(int addr);
 void hd6301_poke(int addr, BYTE value);
-BYTE hd6301_check_for_tx_byte();
-BYTE hd6301_read_tx_byte();
+void hd6301_tx_empty(int empty);
 int hd6301_sci_busy();
 
 #define MOUSE_MASK 0x33333333 // 20bit on real HW?

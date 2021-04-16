@@ -9,6 +9,7 @@
 #include "cpu.h"
 #include "ireg.h"
 #include "sci.h"
+#include <SerialPort.h>
 
 /*
 This part of the emu deals with serial I/O between the 6301 and its CPU, in
@@ -175,10 +176,10 @@ u_char value;
     shifted, but not more. 
     TDRE = 0 while a byte is waiting in TDR.
 */
+  TRACE("6301 TDR %X\n", value);
+  serial_send(value);
 
-  Ikbd.tdr = value;
-  TRACE("6301 TDR %X\n", Ikbd.tdr);
+  // Flag a byte as waiting
   iram[TRCSR] &= ~TDRE;
-  // starting a transmission
 
 }

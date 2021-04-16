@@ -19,23 +19,13 @@ extern "C"
     RPIConfig IKBDConfig;
 }
 
-void handle_send_to_st() {
-    if (hd6301_check_for_tx_byte()) {
-        std::vector<unsigned char> data;
-        data.push_back(hd6301_read_tx_byte());
-        //printf("6301 -> ST %X\n", data[0]);
-        SerialPort::instance().send(data);
-    }
-}
-
 void handle_rx_from_st() {
     if (!hd6301_sci_busy()) {
-        std::vector<unsigned char> data;
-        SerialPort::instance().recv(data);
-        for (auto const& bt: data) {
-            printf("ST -> 6301 %X\n", bt);
-            Ikbd.rdrs = bt;
-            hd6301_receive_byte(bt);
+        unsigned char data;
+        if (SerialPort::instance().recv(data)) {
+            printf("ST -> 6301 %X\n", data);
+            Ikbd.rdrs = data;
+            hd6301_receive_byte(data);
         }
     }
 }
@@ -76,7 +66,10 @@ int main(int argc, char* argv[]) {
         if (ms_time.tv_nsec > 1000 * 1000) {
             ++count;
             hd6301_run_clocks(1000);
-            handle_send_to_st();
+
+            // Update the tx serial port status based on our serial port handler
+            hd6301_tx_empty(SerialPort::instance().send_buf_empty() ? 1 : 0);
+
             HidInput::instance().handle_keyboard();
             ms_time.tv_nsec = 0;
             ++ms_count;

@@ -226,17 +226,12 @@ void hd6301_poke(int addr, BYTE value) {
     ram[addr] = value;
 }
 
-BYTE hd6301_check_for_tx_byte() {
-  return (!(iram[TRCSR]&TDRE));
-}
-
-BYTE hd6301_read_tx_byte() {
-  BYTE result = 0;
-    if (!(iram[TRCSR]&TDRE)) {
-        result = Ikbd.tdr;
-        iram[TRCSR] |= TDRE;
-    }
-    return result;
+void hd6301_tx_empty(int empty) {
+  // Once our serial port TX buffer has space then set the register
+  // to show the CPU another byte can be sent
+  if (empty) {
+    iram[TRCSR] |= TDRE;
+  }
 }
 
 int hd6301_sci_busy() {

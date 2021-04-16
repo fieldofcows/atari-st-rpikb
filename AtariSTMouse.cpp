@@ -18,7 +18,7 @@ void AtariSTMouse::set_speed_internal(int64_t cpu_cycles, int speed, int& cycles
     cycles = 0;
     next_cycle = 0;
     if (speed != 0) {
-        double freq = MIN((abs(speed) - 1) * 20.0 + 75.0, 1500.0);
+        double freq = MIN((abs(speed) - 1) * 15.0 + 100.0, 1500.0);
         freq = (speed > 0) ? freq : -freq;
         cycles = (1000.0 * 1000.0) / freq;
         next_cycle = cpu_cycles + abs(cycles);
