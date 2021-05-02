@@ -30,6 +30,11 @@ public:
     static AtariSTMouse& instance();
 
     /**
+     * Set the parameters for USB mouse to atari mouse scaling
+     */
+    void setup(double factor, double offset, double min);
+
+    /**
      * Set the speed of the mouse. The value is transformed into a frequency at which the
      * mouse quadrature encoder value rotates. The units are fairly arbritrary but range from
      * 0 for stationary up to a maximum of about +/- 50. Make sure the USB mouse routine scales the
@@ -58,6 +63,10 @@ private:
     // is rotated.
     int64_t next_x_cycle = 0;
     int64_t next_y_cycle = 0;
+
+    double factor = 15.0;
+    double offset = 100.0;
+    double min = 1500.0;
 };
 
 extern "C" {
