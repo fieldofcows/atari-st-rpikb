@@ -17,6 +17,7 @@
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 */
 #include <stdint.h>
+#include "pico/stdlib.h"
 
 #pragma once
 
@@ -24,15 +25,12 @@
 
 class AtariSTMouse {
 private:
-    AtariSTMouse() = default;
+    AtariSTMouse();
 
 public:
     static AtariSTMouse& instance();
 
-    /**
-     * Set the parameters for USB mouse to atari mouse scaling
-     */
-    void setup(double factor, double offset, double min);
+public:
 
     /**
      * Set the speed of the mouse. The value is transformed into a frequency at which the
@@ -40,33 +38,32 @@ public:
      * 0 for stationary up to a maximum of about +/- 50. Make sure the USB mouse routine scales the
      * values accordingly.
      */
-    void set_speed(int64_t cpu_cycles, int x, int y);
+    void set_speed(int x, int y);
 
-    const int get_x_cycles() const;
-    const int get_y_cycles() const;
+    /**
+     * Periodic update function. Call as fast as possible.
+     */
+    void update();
 
-    const int64_t get_next_x_cycle() const;
-    void set_next_x_cycle(int64_t val);
-    const int64_t get_next_y_cycle() const;
-    void set_next_y_cycle(int64_t val);
-
-private:
-    void set_speed_internal(int64_t cpu_cycles, int speed, int& cycles, int64_t& next_cycle);
+    const int get_x_reg() const;
+    const int get_y_reg() const;
 
 private:
-    // Number of HD6301 clock cycles between each rotation of the mouse state.
+    void set_speed_internal(int speed, int& period);
+
+private:
+    // Time in microseconds between each rotation of the mouse state.
     // The sign is used to indicate the direction.
-    int x_cycles = 0;
-    int y_cycles = 0;
+    int x_period_us = 0;
+    int y_period_us = 0;
 
-    // When this CPU clock cycle is reached, the corresponding mouse state register
-    // is rotated.
-    int64_t next_x_cycle = 0;
-    int64_t next_y_cycle = 0;
+    // The last time each register was rotated
+    absolute_time_t last_x_us;
+    absolute_time_t last_y_us;
 
-    double factor = 15.0;
-    double offset = 100.0;
-    double min = 1500.0;
+    // The mouse registers
+    unsigned int x_reg;
+    unsigned int y_reg;
 };
 
 extern "C" {

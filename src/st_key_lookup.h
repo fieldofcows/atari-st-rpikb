@@ -19,3 +19,4 @@
 #pragma once
 
 extern char st_key_lookup_gb[];
+extern char st_key_lookup_hid_gb[];

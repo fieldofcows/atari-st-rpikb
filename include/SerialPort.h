@@ -19,12 +19,14 @@
 #pragma once
 
 #ifdef __cplusplus 
+#ifdef RPI
 #include <vector>
-#include <stdexcept>
 #include <thread>
 #include <mutex>
 #include <condition_variable>
 #include <queue>
+#endif
+#include <stdexcept>
 
 class SerialPortException: public std::runtime_error {
 public:
@@ -73,17 +75,18 @@ public:
 
 private:
     void configure();
+#ifdef RPI
     void handle_send();
-
+#endif
 private:
+#ifdef RPI
     std::thread                 serial_thread;
     mutable std::mutex          mutex;
     std::condition_variable     cond;
     bool                        thread_run = false;
-
-    std::queue<unsigned char>   tx_buf;
-
     int     handle = -1;
+    std::queue<unsigned char>   tx_buf;
+#endif
 };
 
 extern "C" {
