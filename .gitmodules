@@ -1,3 +1,4 @@
 [submodule "pico-sdk"]
 	path = pico-sdk
 	url = https://github.com/fieldofcows/pico-sdk.git
+	branch = rdh/hd6301-patch
