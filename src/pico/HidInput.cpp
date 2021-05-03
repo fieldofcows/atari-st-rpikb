@@ -25,6 +25,11 @@
 // Mouse toggle key is set to Scroll Lock
 #define TOGGLE_MOUSE_MODE 70
 
+#define ATARI_LSHIFT 42
+#define ATARI_RSHIFT 54
+#define ATARI_ALT    56
+#define ATARI_CTRL   29
+
 static int kbdev = 0;
 static int mousedev = 0;
 
@@ -85,12 +90,6 @@ void HidInput::open(const std::string& kbdev, const std::string& mousedev, const
 void HidInput::handle_keyboard() {
     if (kbdev && tuh_hid_keyboard_is_mounted(kbdev)) {
         if (!tuh_hid_keyboard_is_busy(kbdev)) {
-            /*
-                            bool const is_shift =
-                        p_new_report->modifier & (KEYBOARD_MODIFIER_LEFTSHIFT | KEYBOARD_MODIFIER_RIGHTSHIFT);
-                uint8_t ch = keycode2ascii[p_new_report->keycode[i]][is_shift ? 1 : 0];
-            */
-
             // Translate the USB HID codes into ST keys that are currently down
             char st_keys[6];
             for (int i = 0; i < 6; ++i) {
@@ -112,6 +111,14 @@ void HidInput::handle_keyboard() {
                 }
                 key_states[i] = down ? 1 : 0;
             }
+
+            // Handle modifier keys
+            key_states[ATARI_LSHIFT] = (keyboard_report.modifier & KEYBOARD_MODIFIER_LEFTSHIFT) ? 1 : 0;
+            key_states[ATARI_RSHIFT] = (keyboard_report.modifier & KEYBOARD_MODIFIER_RIGHTSHIFT) ? 1 : 0;
+            key_states[ATARI_CTRL] = ((keyboard_report.modifier & KEYBOARD_MODIFIER_LEFTCTRL) ||
+                                      (keyboard_report.modifier & KEYBOARD_MODIFIER_RIGHTCTRL)) ? 1 : 0;
+            key_states[ATARI_ALT] = ((keyboard_report.modifier & KEYBOARD_MODIFIER_LEFTALT) ||
+                                      (keyboard_report.modifier & KEYBOARD_MODIFIER_RIGHTALT)) ? 1 : 0;
 
             // Trigger the next report
             tuh_hid_keyboard_get_report(kbdev, &keyboard_report);
