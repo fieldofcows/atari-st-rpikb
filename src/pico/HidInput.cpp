@@ -31,6 +31,8 @@
 #define ATARI_ALT    56
 #define ATARI_CTRL   29
 
+#define GET_I32_VALUE(item)     (int32_t)(item->Value | ((item->Value & (1 << (item->Attributes.BitSize-1))) ? ~((1 << item->Attributes.BitSize) - 1) : 0))
+
 static std::map<int, uint8_t*> device;
 
 extern "C" {
@@ -44,10 +46,10 @@ void tuh_hid_mounted_cb(uint8_t dev_addr) {
     }
     else if (tp == HID_MOUSE) {
         printf("A mouse device (address %d) is mounted\r\n", dev_addr);
-        device[dev_addr] = new uint8_t[sizeof(hid_mouse_report_t)];
+        device[dev_addr] = new uint8_t[tuh_hid_get_report_size(dev_addr)];
         tuh_hid_get_report(dev_addr, device[dev_addr]);
     }
-    else if (tp == HID_GENERIC) {
+    else if (tp == HID_JOYSTICK) {
         printf("A joystick device (address %d) is mounted\r\n", dev_addr);
         device[dev_addr] = new uint8_t[tuh_hid_get_report_size(dev_addr)];
         tuh_hid_get_report(dev_addr, device[dev_addr]);
@@ -62,7 +64,7 @@ void tuh_hid_unmounted_cb(uint8_t dev_addr) {
     else if (tp == HID_MOUSE) {
         printf("A mouse device (address %d) is unmounted\r\n", dev_addr);
     }
-    else if (tp == HID_GENERIC) {
+    else if (tp == HID_JOYSTICK) {
         printf("A joystick device (address %d) is unmounted\r\n", dev_addr);
     }
     auto it = device.find(dev_addr);
@@ -95,7 +97,7 @@ void HidInput::open(const std::string& kbdev, const std::string& mousedev, const
 
 void HidInput::handle_keyboard() {
     for (auto it : device) {
-        if (tuh_hid_get_type(it.first != HID_KEYBOARD)) {
+        if (tuh_hid_get_type(it.first) != HID_KEYBOARD) {
             continue;
         }
         if (tuh_hid_is_mounted(it.first) && !tuh_hid_is_busy(it.first)) {
@@ -138,50 +140,56 @@ void HidInput::handle_keyboard() {
 
 void HidInput::handle_mouse(const int64_t cpu_cycles) {
     for (auto it : device) {
-        if (tuh_hid_get_type(it.first != HID_MOUSE)) {
+        if (tuh_hid_get_type(it.first) != HID_MOUSE) {
             continue;
         }
         if (tuh_hid_is_mounted(it.first) && !tuh_hid_is_busy(it.first)) {
             hid_mouse_report_t* mouse = (hid_mouse_report_t*)it.second;
 
-            // Update button state
-            mouse_state = (mouse_state & 0xfd) | ((mouse->buttons & MOUSE_BUTTON_LEFT) ? 2 : 0);
-            mouse_state = (mouse_state & 0xfe) | ((mouse->buttons & MOUSE_BUTTON_RIGHT) ? 1 : 0);
-            //printf("mouse_state = %d, buttons = %d\n", mouse_state, mouse->buttons);
+            const uint8_t* js = it.second;
+            HID_ReportInfo_t* info = tuh_hid_get_report_info(it.first);
+            if (info) {
+                // Get the data from the HID report
+                int32_t x = 0;
+                int32_t y = 0;
+                int8_t buttons = 0;
 
-            // Mouse vectors
-            val_x = mouse->x;
-            val_y = mouse->y;
+                for (uint8_t i = 0; i < info->TotalReportItems; ++i) {
+                    HID_ReportItem_t* item = &info->ReportItems[i];
+                    // Update the report item value if it is contained within the current report
+                    if (!(USB_GetHIDReportItemInfo((const uint8_t*)js, item)))
+                        continue;
+                    // Determine what report item is being tested, process updated value as needed
+                    if ((item->Attributes.Usage.Page == USAGE_PAGE_BUTTON) && (item->ItemType == HID_REPORT_ITEM_In)) {
+                        buttons |= (item->Value ? 1 : 0) << (item->Attributes.Usage.Usage - 1);
+                    }
+                    else if ((item->Attributes.Usage.Page == USAGE_PAGE_GENERIC_DCTRL) &&
+                                ((item->Attributes.Usage.Usage == USAGE_X) ||
+                                 (item->Attributes.Usage.Usage == USAGE_Y)) &&
+                                 (item->ItemType == HID_REPORT_ITEM_In)) {
+                        if (item->Attributes.Usage.Usage == USAGE_X) {
+                            x = GET_I32_VALUE(item);
+                        }
+                        else {
+                            y = GET_I32_VALUE(item);
+                        }
+                    }
+                }
+                // Update button state
+                mouse_state = (mouse_state & 0xfd) | ((buttons & MOUSE_BUTTON_LEFT) ? 2 : 0);
+                mouse_state = (mouse_state & 0xfe) | ((buttons & MOUSE_BUTTON_RIGHT) ? 1 : 0);
 
-            // Some mice don't handle the -127 to 127 limit very will when using the boot protocol.
-            // If we see a rapid transition in direction then assume a variable wrap around.
-            if ((val_x < 0) && (last_x > 45)) {
-                val_x = 127;
+                // Mouse vectors
+                val_x = x;
+                val_y = y;
             }
-            else if ((val_x > 0) && (last_x < -45)) {
-                val_x = -127;
-            }
-            if ((val_y < 0) && (last_y > 45)) {
-                val_y = 127;
-            }
-            else if ((val_y > 0) && (last_y < -45)) {
-                val_y = -127;
-            }
-            last_x = val_x;
-            last_y = val_y;
-
             // Trigger the next report
             tuh_hid_get_report(it.first, it.second);
         }
     }
-    if (cpu_cycles != 0) {
-        if ((val_x != 0) || (val_y != 0)) {
-            //printf("%d %d\n", val_x, val_y);
-        }
-        AtariSTMouse::instance().set_speed(val_x, val_y);
-        val_x = 0;
-        val_y = 0;
-    }
+    AtariSTMouse::instance().set_speed(val_x, val_y);
+    val_x = 0;
+    val_y = 0;
 }
 
 void HidInput::handle_joystick() {
@@ -190,7 +198,7 @@ void HidInput::handle_joystick() {
     int joystick = 2;
 
     for (auto it : device) {
-        if (tuh_hid_get_type(it.first != HID_GENERIC)) {
+        if (tuh_hid_get_type(it.first) != HID_JOYSTICK) {
             continue;
         }
         if (--joystick < 0) {
@@ -201,25 +209,19 @@ void HidInput::handle_joystick() {
             const uint8_t* js = it.second;
             HID_ReportInfo_t* info = tuh_hid_get_report_info(it.first);
             if (info) {
+                int button = 0;
                 for (uint8_t i = 0; i < info->TotalReportItems; ++i) {
                     HID_ReportItem_t* item = &info->ReportItems[i];
                     // Update the report item value if it is contained within the current report
                     if (!(USB_GetHIDReportItemInfo((const uint8_t*)js, item)))
                         continue;
                     // Determine what report item is being tested, process updated value as needed
-                    if ((item->Attributes.Usage.Page        == USAGE_PAGE_BUTTON) &&
-                        (item->ItemType                     == HID_REPORT_ITEM_In)) {
-                        // Button
-                        if (joystick == 0)
-                            mouse_state = (mouse_state & 0xfd) | (item->Value ? 2 : 0);
-                        else
-                            mouse_state = (mouse_state & 0xfe) | (item->Value ? 1 : 0);
+                    if ((item->Attributes.Usage.Page == USAGE_PAGE_BUTTON) && (item->ItemType == HID_REPORT_ITEM_In)) {
+                        button |= item->Value;
                     }
                     else if ((item->Attributes.Usage.Page   == USAGE_PAGE_GENERIC_DCTRL) &&
-                                ((item->Attributes.Usage.Usage == USAGE_X)                  ||
-                                (item->Attributes.Usage.Usage == USAGE_Y))                 &&
-                                (item->ItemType                == HID_REPORT_ITEM_In))
-                    {
+                                ((item->Attributes.Usage.Usage == USAGE_X) || (item->Attributes.Usage.Usage == USAGE_Y)) &&
+                                (item->ItemType == HID_REPORT_ITEM_In)) {
                         int bit;
                         if (item->Attributes.Usage.Usage == USAGE_X) {
                             bit = 2;
@@ -241,7 +243,11 @@ void HidInput::handle_joystick() {
                         }
                     }
                 }
-
+                // All USB buttons have been mapped to a single Atari button
+                if (joystick == 0)
+                    mouse_state = (mouse_state & 0xfd) | (button ? 2 : 0);
+                else
+                    mouse_state = (mouse_state & 0xfe) | (button ? 1 : 0);
             }
 
             // Trigger the next report

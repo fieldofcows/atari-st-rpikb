@@ -66,7 +66,7 @@ void core1_entry() {
 
         if ((count % 1000000) == 0) {
             //printf("Cycles = %lu\n", count);
-            printf("CPU cycles = %llu\n", cpu.ncycles);
+            //printf("CPU cycles = %llu\n", cpu.ncycles);
         }
 
         tm = delayed_by_us(tm, CYCLES_PER_LOOP);
@@ -101,9 +101,6 @@ int main() {
             handle_rx_from_st();
             HidInput::instance().handle_mouse(cpu.ncycles);
             HidInput::instance().handle_joystick();
-        }
-        else {
-            //HidInput::instance().handle_mouse(0);
         }
     }
     return 0;

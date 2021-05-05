@@ -61,9 +61,6 @@ private:
     bool mouse_en = true;
     int val_x = 0;
     int val_y = 0;
-    // Keep track of the last mouse values to fix mouse errors
-    int8_t last_x = 0;
-    int8_t last_y = 0;
 };
 
 extern "C" {

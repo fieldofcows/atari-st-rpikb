@@ -87,7 +87,7 @@ void AtariSTMouse::set_speed_internal(int speed, int& period) {
     }
     else {
         #define MAX_SPEED 50000.0
-        #define MIN_SPEED 500
+        #define MIN_SPEED 650
         period = (int)((MAX_SPEED / speed) * 1.0);
         if ((speed > 0) && (period < MIN_SPEED)) {
             period = MIN_SPEED;
