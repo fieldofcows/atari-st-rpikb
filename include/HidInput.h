@@ -21,6 +21,7 @@
 #ifdef __cplusplus
 #include <stdexcept>
 #include <vector>
+#include "UserInterface.h"
 
 class HidInputException: public std::runtime_error {
 public:
@@ -33,6 +34,8 @@ private:
 
 public:
     static HidInput& instance();
+
+    void set_ui(UserInterface& ui);
 
     /**
      * Open the input devices
@@ -59,8 +62,6 @@ private:
     int mouse_state = 0;
     unsigned char joystick_state = 0;
     bool mouse_en = true;
-    int val_x = 0;
-    int val_y = 0;
 };
 
 extern "C" {

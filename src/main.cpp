@@ -17,6 +17,7 @@
 #include "HidInput.h"
 #include "SerialPort.h"
 #include "AtariSTMouse.h"
+#include "UserInterface.h"
 
 #define ROMBASE     256
 #define CYCLES_PER_LOOP 1000
@@ -79,9 +80,15 @@ int main() {
     board_init();
     tusb_init();
 
+    UserInterface ui;
+    ui.init();
+    ui.update();
+
     // Setup the UART and HID instance.
     SerialPort::instance().open();
+    SerialPort::instance().set_ui(ui);
     HidInput::instance().reset();
+    HidInput::instance().set_ui(ui);
 
     // The second CPU core is dedicated to the HD6301 emulation.
     multicore_launch_core1(core1_entry);
@@ -101,6 +108,7 @@ int main() {
             handle_rx_from_st();
             HidInput::instance().handle_mouse(cpu.ncycles);
             HidInput::instance().handle_joystick();
+            ui.update();
         }
     }
     return 0;

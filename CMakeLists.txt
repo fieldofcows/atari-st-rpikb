@@ -48,6 +48,9 @@ if(${PLATFORM} STREQUAL PICO)
         src/pico/SerialPort.cpp
         src/pico/HidInput.cpp
         src/util.cpp
+        src/UserInterface.cpp
+        src/NVSettings.cpp
+        ssd1306/ssd1306.c
         6301/6301.c
     )
     set(INCLUDES
@@ -73,6 +76,7 @@ add_executable(atari_ikbd ${SOURCES})
 target_include_directories(
     atari_ikbd PRIVATE 
     6301
+    ssd1306
     src
     include
     ${INCLUDES}
@@ -85,9 +89,10 @@ if(${PLATFORM} STREQUAL PICO)
     #add_definitions(-DUNIX -DPICO -DTRACE_6301)
     add_definitions(-DUNIX -DPICO)
     
-    target_link_libraries(atari_ikbd pico_stdlib pico_multicore tinyusb_host tinyusb_board)
+    target_link_libraries(atari_ikbd pico_stdlib pico_multicore hardware_i2c hardware_flash hardware_sync tinyusb_host tinyusb_board)
     pico_enable_stdio_uart(atari_ikbd 1)
     pico_add_extra_outputs(atari_ikbd)
+    pico_set_binary_type(atari_ikbd copy_to_ram)
 else()
     add_definitions(-DUNIX -DRPI)
     target_link_libraries(atari_ikbd rt pthread)

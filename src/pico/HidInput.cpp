@@ -34,6 +34,10 @@
 #define GET_I32_VALUE(item)     (int32_t)(item->Value | ((item->Value & (1 << (item->Attributes.BitSize-1))) ? ~((1 << item->Attributes.BitSize) - 1) : 0))
 
 static std::map<int, uint8_t*> device;
+static UserInterface* ui_ = nullptr;
+static int kb_count = 0;
+static int mouse_count = 0;
+static int joy_count = 0;
 
 extern "C" {
 
@@ -43,16 +47,22 @@ void tuh_hid_mounted_cb(uint8_t dev_addr) {
         printf("A keyboard device (address %d) is mounted\r\n", dev_addr);
         device[dev_addr] = new uint8_t[sizeof(hid_keyboard_report_t)];
         tuh_hid_get_report(dev_addr, device[dev_addr]);
+        ++kb_count;
     }
     else if (tp == HID_MOUSE) {
         printf("A mouse device (address %d) is mounted\r\n", dev_addr);
         device[dev_addr] = new uint8_t[tuh_hid_get_report_size(dev_addr)];
         tuh_hid_get_report(dev_addr, device[dev_addr]);
+        ++mouse_count;
     }
     else if (tp == HID_JOYSTICK) {
         printf("A joystick device (address %d) is mounted\r\n", dev_addr);
         device[dev_addr] = new uint8_t[tuh_hid_get_report_size(dev_addr)];
         tuh_hid_get_report(dev_addr, device[dev_addr]);
+        ++joy_count;
+    }
+    if (ui_) {
+        ui_->usb_connect_state(kb_count, mouse_count, joy_count);
     }
 }
 
@@ -60,17 +70,23 @@ void tuh_hid_unmounted_cb(uint8_t dev_addr) {
     HID_TYPE tp = tuh_hid_get_type(dev_addr);
     if (tp == HID_KEYBOARD) {
         printf("A keyboard device (address %d) is unmounted\r\n", dev_addr);
+        --kb_count;
     }
     else if (tp == HID_MOUSE) {
         printf("A mouse device (address %d) is unmounted\r\n", dev_addr);
+        --mouse_count;
     }
     else if (tp == HID_JOYSTICK) {
         printf("A joystick device (address %d) is unmounted\r\n", dev_addr);
+        --joy_count;
     }
     auto it = device.find(dev_addr);
     if (it != device.end()) {
         delete[] it->second;
         device.erase(it);
+    }
+    if (ui_) {
+        ui_->usb_connect_state(kb_count, mouse_count, joy_count);
     }
 }
 
@@ -90,6 +106,10 @@ HidInput::HidInput() {
 HidInput& HidInput::instance() {
     static HidInput hid;
     return hid;
+}
+
+void HidInput::set_ui(UserInterface& ui) {
+    ui_ = &ui;
 }
 
 void HidInput::open(const std::string& kbdev, const std::string& mousedev, const std::string joystickdev) {
@@ -139,6 +159,8 @@ void HidInput::handle_keyboard() {
 }
 
 void HidInput::handle_mouse(const int64_t cpu_cycles) {
+    int32_t x = 0;
+    int32_t y = 0;
     for (auto it : device) {
         if (tuh_hid_get_type(it.first) != HID_MOUSE) {
             continue;
@@ -150,8 +172,6 @@ void HidInput::handle_mouse(const int64_t cpu_cycles) {
             HID_ReportInfo_t* info = tuh_hid_get_report_info(it.first);
             if (info) {
                 // Get the data from the HID report
-                int32_t x = 0;
-                int32_t y = 0;
                 int8_t buttons = 0;
 
                 for (uint8_t i = 0; i < info->TotalReportItems; ++i) {
@@ -178,18 +198,14 @@ void HidInput::handle_mouse(const int64_t cpu_cycles) {
                 // Update button state
                 mouse_state = (mouse_state & 0xfd) | ((buttons & MOUSE_BUTTON_LEFT) ? 2 : 0);
                 mouse_state = (mouse_state & 0xfe) | ((buttons & MOUSE_BUTTON_RIGHT) ? 1 : 0);
-
-                // Mouse vectors
-                val_x = x;
-                val_y = y;
             }
             // Trigger the next report
             tuh_hid_get_report(it.first, it.second);
         }
     }
-    AtariSTMouse::instance().set_speed(val_x, val_y);
-    val_x = 0;
-    val_y = 0;
+    // Handle the mouse acceleration/deceleration configured in the UI.
+    double accel = 1.0 + ((double)ui_->get_mouse_speed() * 0.1);
+    AtariSTMouse::instance().set_speed((int)((double)x * accel), (int)((double)y * accel));
 }
 
 void HidInput::handle_joystick() {

@@ -27,6 +27,7 @@
 #include <queue>
 #endif
 #include <stdexcept>
+#include "UserInterface.h"
 
 class SerialPortException: public std::runtime_error {
 public:
@@ -47,6 +48,11 @@ public:
      * Throws an exception if the port cannot be opened.
      */
     void open();
+
+    /**
+     * Set UI for logging
+     */
+    void set_ui(UserInterface& ui);
 
     /**
      * Close the serial port if it was previously opened
@@ -87,6 +93,7 @@ private:
     int     handle = -1;
     std::queue<unsigned char>   tx_buf;
 #endif
+    UserInterface*              ui = nullptr;
 };
 
 extern "C" {

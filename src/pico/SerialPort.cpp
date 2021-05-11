@@ -19,6 +19,7 @@
 #include "SerialPort.h"
 #include "pico/stdlib.h"
 #include "hardware/uart.h"
+#include "config.h"
 
 #define UART_ID uart1
 // The HD6301 in the ST communicates at 7812 baud
@@ -26,8 +27,6 @@
 #define DATA_BITS 8
 #define STOP_BITS 1
 #define PARITY    UART_PARITY_NONE
-#define UART_TX_PIN 4
-#define UART_RX_PIN 5
 
 // We flag the buffer as 'empty' if it has less than this amount of bytes queued. This
 // provides a small queue that optimises the serial port performance. Important for
@@ -44,9 +43,9 @@ SerialPort& SerialPort::instance() {
 }
 
 void SerialPort::open() {
-    uart_init(uart1, 2400);
-    gpio_set_function(UART_TX_PIN, GPIO_FUNC_UART);
-    gpio_set_function(UART_RX_PIN, GPIO_FUNC_UART);
+    uart_init(UART_DEVICE, 2400);
+    gpio_set_function(UART_TX, GPIO_FUNC_UART);
+    gpio_set_function(UART_RX, GPIO_FUNC_UART);
     int actual = uart_set_baudrate(UART_ID, BAUD_RATE);
 
     // No hardware flow control
@@ -58,16 +57,26 @@ void SerialPort::open() {
     uart_set_fifo_enabled(UART_ID, false);
 }
 
+void SerialPort::set_ui(UserInterface& ui) {
+    this->ui = &ui;
+}
+
 void SerialPort::close() {
 }
 
 void SerialPort::send(const unsigned char data) {
     uart_putc(UART_ID, data);
+    if (ui) {
+        ui->serial(true, data);
+    }
 }
 
 bool SerialPort::recv(unsigned char& data) const {
     if (uart_is_readable(UART_ID)) {
         data = uart_getc(UART_ID);
+        if (ui) {
+            ui->serial(false, data);
+        }
         return true;
     }
     return false;

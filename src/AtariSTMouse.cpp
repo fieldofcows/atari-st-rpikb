@@ -22,9 +22,8 @@
 #include <stdio.h>
 
 #define MOUSE_MASK 0x33333333
-
-int tick_count = 0;
-int toggle_count = 0;
+#define MAX_SPEED 50000.0
+#define MIN_SPEED 650
 
 AtariSTMouse& AtariSTMouse::instance() {
     static AtariSTMouse mouse;
@@ -32,13 +31,14 @@ AtariSTMouse& AtariSTMouse::instance() {
 }
 
 AtariSTMouse::AtariSTMouse() {
+    /*
     gpio_init(14);
     gpio_init(15);
     gpio_set_dir(14, GPIO_OUT);
     gpio_set_dir(15, GPIO_OUT);
     gpio_set_pulls(14, true, true);
     gpio_set_pulls(15, true, true);
-
+    */
     x_reg = MOUSE_MASK;
     y_reg = MOUSE_MASK;
     
@@ -60,9 +60,8 @@ void AtariSTMouse::update() {
             // Time to cycle
             last_x_us = tm;
             x_reg = (x_period_us > 0) ? _rotr(x_reg, 1) : _rotl(x_reg, 1);
-            gpio_put(14, x_reg & 1);
-            gpio_put(15, (x_reg & 2) ? 1 : 0);
-            ++toggle_count;
+            //gpio_put(14, x_reg & 1);
+            //gpio_put(15, (x_reg & 2) ? 1 : 0);
         }
     }
     if (y_period_us != 0) {
@@ -86,8 +85,6 @@ void AtariSTMouse::set_speed_internal(int speed, int& period) {
         period = 0;
     }
     else {
-        #define MAX_SPEED 50000.0
-        #define MIN_SPEED 650
         period = (int)((MAX_SPEED / speed) * 1.0);
         if ((speed > 0) && (period < MIN_SPEED)) {
             period = MIN_SPEED;
