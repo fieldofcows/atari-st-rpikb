@@ -82,6 +82,21 @@ int8_t UserInterface::get_mouse_speed() {
     return settings.get_settings().mouse_speed;
 }
 
+uint8_t UserInterface::get_joystick() {
+    return settings.get_settings().joy_device;
+}
+
+uint8_t UserInterface::get_mouse_enabled() {
+    return settings.get_settings().mouse_enabled;
+}
+
+void UserInterface::set_mouse_enabled(uint8_t en) {
+    settings.get_settings().mouse_enabled = en;
+    settings.write();
+    dirty = true;
+}
+
+
 void UserInterface::update_serial() {
     uint8_t y = 0;
     ssd1306_clear(&disp);
@@ -89,17 +104,20 @@ void UserInterface::update_serial() {
         ssd1306_draw_string(&disp, 0, y, 1, (char*)it.c_str());
         y += 9;
     }
+    ssd1306_draw_string(&disp, 24, 27, 1, (char*)"ST <-> Kbd");
 }
 
 void UserInterface::update_status() {
     char buf[32];
     ssd1306_clear(&disp);
-    sprintf(buf, "USB Keyboard: %d", num_kb);
+    sprintf(buf, "USB Keyboard  %d", num_kb);
     ssd1306_draw_string(&disp, 0, 0, 1,  buf);
-    sprintf(buf, "USB Mouse:    %d", num_mouse);
+    sprintf(buf, "USB Mouse     %d", num_mouse);
     ssd1306_draw_string(&disp, 0, 9, 1,  buf);
-    sprintf(buf, "USB Joystick: %d", num_joy);
-    ssd1306_draw_string(&disp, 0, 18, 1, buf);    
+    sprintf(buf, "USB Joystick  %d", num_joy);
+    ssd1306_draw_string(&disp, 0, 18, 1, buf);
+    sprintf(buf, "%s", settings.get_settings().mouse_enabled ? "Mouse enabled" : "Joy 0 enabled");
+    ssd1306_draw_string(&disp, 0, 27, 1, buf);
 }
 
 void UserInterface::update_mouse() {
@@ -112,7 +130,7 @@ void UserInterface::update_mouse() {
 
 void UserInterface::update_joy(int index) {
     char buf[32];
-    sprintf(buf, "Joy %d: DSub", index);
+    sprintf(buf, "Joy %d: %s", index, (settings.get_settings().joy_device & (1 << index)) ? "DSub" : "USB");
     ssd1306_draw_string(&disp, 0, 54, 1, buf);
 }
 
@@ -149,6 +167,11 @@ void UserInterface::on_button_down(int i) {
                 dirty = true;
             }
         }
+        else if ((page == PAGE_JOY0) || (page == PAGE_JOY1)) {
+            settings.get_settings().joy_device ^= (1 << (page - PAGE_JOY0));
+            settings.write();
+            dirty = true;
+        }
     }
     else if (i == BUTTON_RIGHT) {
         if (page == PAGE_MOUSE) {
@@ -157,6 +180,11 @@ void UserInterface::on_button_down(int i) {
                 settings.write();
                 dirty = true;
             }
+        }
+        else if ((page == PAGE_JOY0) || (page == PAGE_JOY1)) {
+            settings.get_settings().joy_device ^= (1 << (page - PAGE_JOY0));
+            settings.write();
+            dirty = true;
         }
     }
 }

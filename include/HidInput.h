@@ -55,6 +55,9 @@ public:
     bool mouse_enabled() const;
 
 private:
+    bool get_usb_joystick(int addr, uint8_t& axis, uint8_t& button);
+    
+private:
     int keyboard_handle = -1;
     int mouse_handle = -1;
     int joystick_handle = -1;

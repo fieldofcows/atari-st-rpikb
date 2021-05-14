@@ -29,6 +29,9 @@ struct Settings {
     // The mouse speed ranges from -7 to +8 with 0 being the standard speed
     int8_t      mouse_speed;
 
+    // 1 = mouse enabled, 0 = joystick 0 enabled
+    uint8_t     mouse_enabled;
+
     // Bitfield where 1 = DSub joystick, 0 = USB.
     // Bit0 = Joystick 0
     // Bit1 = Joystick 1

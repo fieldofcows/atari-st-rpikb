@@ -51,6 +51,20 @@ public:
     int8_t get_mouse_speed();
 
     /**
+     * Get the joystick hardware assignment.
+     * Bitfield where 1 = DSub joystick, 0 = USB.
+     * Bit0 = Joystick 0
+     * Bit1 = Joystick 1
+     */
+    uint8_t get_joystick();
+
+    /**
+     * Returns true if mouse enabled, false if joystick 0 enabled
+     */
+    uint8_t get_mouse_enabled();
+    void set_mouse_enabled(uint8_t en);
+
+    /**
      * Update the display if necessary
      */
     void update();
