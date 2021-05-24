@@ -33,11 +33,6 @@
 u_int ram_start;    /* 0x0000; */
 u_int ram_end;    /* 0xFFFF; */
 u_char  *ram=0;     /* was [65536]; modified for MSDOS compilers */
-u_char *breaks;     /* Physical storage for breakpoints */
-int    break_flag;    /* Non-zero if an address containing a
-           breakpoint has been accessed by mem_xxx */
-u_int  break_addr;    /* Last breakpoint address accessed */
-
 /*
  * mem_init - initialize memory area
  */
@@ -57,23 +52,6 @@ mem_init ()
     memset (ram, 0, 256);
   } else {
     printf ("ram already allocated\n");
-  }
-  /*
-   * This is done here since ram and breaks are sisters
-   */
-  if (breaks == NULL) { // it seemed to count on it = 0?
-    /*
-     * First time initialization.
-     * Allocate space for breakpoints storage
-     */
-    if (!(breaks = malloc (size))) {
-      perror ("Couldn't allocate breaks");
-      exit (errno);
-    }
-    printf("init breaks\n");
-    memset (breaks, 0, size);
-  } else {
-    printf ("breaks already allocated\n");
   }
   return ram;
 }

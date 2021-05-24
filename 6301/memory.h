@@ -30,20 +30,6 @@ extern u_int  ram_end;  /* Last valid RAM address */
 extern u_char  *ram;    /* Physical storage for simulated RAM */
 
 /*
- * The array 'breaks' is a sister array to 'ram'
- * where each address containing nonzero is a breakpoint.
- *
- * 'break_flag' is set if the breakpoint array 'breaks[i]' is set
- * for address 'i'.
- * There is currently no breaks_start and breaks_end variables,
- * so another start value than 0 will not work.
- */
-extern u_char *breaks;    /* Physical storage for breakpoints */
-extern int    break_flag; /* Non-zero if an address containing a
-           breakpoint has been accessed by mem_xxx */
-extern u_int  break_addr; /* Last breakpoint address accessed */
-
-/*
  *  mem_getb - called to get a byte from an address
  */
 static u_char
@@ -51,10 +37,6 @@ mem_getb (addr)
   u_int addr;
 {
   int offs = addr - ireg_start;
-  if (breaks[addr]) {
-    break_flag = 1; /* Signal execution loop to stop */
-    break_addr = addr;
-  }
   //ASSERT(!ireg_start);
   if (offs >= 0 && offs < NIREGS) {
     if(offs==DDR1||offs==DDR2||offs==DDR3||offs==DDR4
@@ -105,10 +87,6 @@ mem_putb (addr, value)
 {
   int offs = addr - ireg_start; /* Address of on-chip memory */
   //ASSERT(addr != 0x83);
-  if (breaks[addr]) {
-    break_flag = 1; /* Signal execution loop to stop */
-    break_addr = addr;
-  }
   if (offs >= 0 && offs < NIREGS) {
     if(offs==RDR||offs==FRC||offs==ICR)
     {
