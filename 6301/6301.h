@@ -1,5 +1,5 @@
 /*
- * Atari ST Raspberry Pi IKDB Emulator
+ * Atari ST RP2040 IKBD Emulator
  * Copyright (C) 2021 Roy Hopkins
  * 
  * This file has been copied and modified from the Steem SSE project.
